@@ -690,14 +690,10 @@ export default function App() {
       {/* Header */}
       <header className="h-16 border-b border-martian-border flex items-center justify-between px-6 bg-martian-surface/50 backdrop-blur-md sticky top-0 z-50">
         <div className="flex items-center gap-4">
-             {/* Open Agent Manager Button */}
-             <button 
-                onClick={() => setMode(AppMode.BUILDER)}
-                className="flex items-center gap-2 text-sm font-medium text-white/90 hover:text-white transition-colors"
-             >
+             <div className="flex items-center gap-2">
                  <Bot className="w-5 h-5 text-martian-primary" />
-                 Open Agent Manager
-             </button>
+                 <span className="text-sm font-bold text-white tracking-tight">ArcSQL</span>
+             </div>
 
              {/* Layout Controls - Grouped */}
              <div className="flex items-center bg-martian-bg/50 border border-martian-border rounded-lg p-0.5 gap-0.5">
@@ -1074,168 +1070,139 @@ export default function App() {
                     )}
                 </div>
 
-                {/* Action Bar / Chat Input */}
-                <div className="p-4 border-t border-martian-border bg-martian-surface/40 backdrop-blur-xl flex flex-col gap-3 sticky bottom-0 z-20 shadow-[0_-10px_40px_rgba(0,0,0,0.3)]">
-                    <div className="flex items-center justify-between mb-1">
-                        <div className="flex items-center bg-martian-bg/50 border border-martian-border rounded-lg p-1 gap-1">
-                            <button 
-                                onClick={() => setMode(AppMode.BUILDER)}
-                                className={`px-3 py-1 rounded text-[10px] font-bold uppercase tracking-wider transition-all flex items-center gap-1.5 ${mode === AppMode.BUILDER ? 'bg-martian-primary text-white shadow-lg shadow-martian-primary/20' : 'text-martian-muted hover:text-white'}`}
-                            >
-                                <Wand2 className="w-3 h-3" />
-                                Build
-                            </button>
-                            <button 
-                                onClick={() => setMode(AppMode.OPTIMIZER)}
-                                className={`px-3 py-1 rounded text-[10px] font-bold uppercase tracking-wider transition-all flex items-center gap-1.5 ${mode === AppMode.OPTIMIZER ? 'bg-omop-cyan text-white shadow-lg shadow-omop-cyan/20' : 'text-martian-muted hover:text-white'}`}
-                            >
-                                <Zap className="w-3 h-3" />
-                                Optimize
-                            </button>
-                            <button 
-                                onClick={() => setMode(AppMode.CONVERTER)}
-                                className={`px-3 py-1 rounded text-[10px] font-bold uppercase tracking-wider transition-all flex items-center gap-1.5 ${mode === AppMode.CONVERTER ? 'bg-omop-magenta text-white shadow-lg shadow-omop-magenta/20' : 'text-martian-muted hover:text-white'}`}
-                            >
-                                <ArrowRightLeft className="w-3 h-3" />
-                                Convert
-                            </button>
-                        </div>
+                {/* Action Bar */}
+                <div className="border-t border-martian-border bg-martian-surface/40 backdrop-blur-xl sticky bottom-0 z-20 shadow-[0_-10px_40px_rgba(0,0,0,0.3)]">
 
-                        {mode === AppMode.CONVERTER && (
-                            <div className="flex items-center gap-2">
-                                <span className="text-[10px] font-bold text-martian-muted uppercase">Target:</span>
-                                <select 
-                                    value={targetDialect}
-                                    onChange={(e) => setTargetDialect(e.target.value as any)}
-                                    className="bg-martian-bg border border-martian-border text-white text-[10px] rounded px-2 py-1 focus:outline-none focus:border-omop-magenta"
-                                >
-                                    <option value="tsql">T-SQL</option>
-                                    <option value="postgres">PostgreSQL</option>
-                                    <option value="bigquery">BigQuery</option>
-                                    <option value="snowflake">Snowflake</option>
-                                </select>
-                            </div>
-                        )}
+                    {/* Mode Selector */}
+                    <div className="flex border-b border-martian-border/50">
+                        {([
+                            { m: AppMode.BUILDER,   Icon: Wand2,           label: 'Build',    desc: 'Write SQL from a description',          active: 'border-martian-primary text-martian-primary bg-martian-primary/5',   inactive: 'border-transparent text-martian-muted hover:bg-martian-surface/50' },
+                            { m: AppMode.OPTIMIZER, Icon: Zap,             label: 'Optimize', desc: 'Rewrite editor SQL for performance',     active: 'border-omop-cyan text-omop-cyan bg-omop-cyan/5',                     inactive: 'border-transparent text-martian-muted hover:bg-martian-surface/50' },
+                            { m: AppMode.CONVERTER, Icon: ArrowRightLeft,  label: 'Convert',  desc: 'Translate to another SQL dialect',       active: 'border-omop-magenta text-omop-magenta bg-omop-magenta/5',           inactive: 'border-transparent text-martian-muted hover:bg-martian-surface/50' },
+                        ] as const).map(({ m, Icon, label, desc, active, inactive }) => (
+                            <button
+                                key={m}
+                                onClick={() => setMode(m)}
+                                className={`flex-1 flex items-center gap-3 px-4 py-3 transition-all border-b-2 text-left ${mode === m ? active : inactive}`}
+                            >
+                                <Icon className="w-4 h-4 shrink-0" />
+                                <div>
+                                    <div className="text-xs font-bold leading-tight">{label}</div>
+                                    <div className="text-[10px] text-martian-muted/60 leading-tight mt-0.5">{desc}</div>
+                                </div>
+                            </button>
+                        ))}
                     </div>
-                    <div className="flex items-start gap-3">
-                        <div className="relative flex-1 group">
-                            <div className="absolute left-3 top-3 w-5 h-5 flex items-center justify-center pointer-events-none">
-                                <MessageSquare className="w-4 h-4 text-martian-primary/70 group-focus-within:text-martian-primary transition-colors" />
-                            </div>
-                            <textarea 
-                                className="w-full bg-martian-bg/80 border border-martian-border rounded-xl pl-10 pr-14 py-2.5 text-sm focus:outline-none focus:border-martian-primary transition-all resize-none shadow-inner h-[50px] focus:h-[80px] focus:bg-black/50"
-                                placeholder={
-                                    mode === AppMode.BUILDER ? "Ask AI to build or analyze (e.g., 'Analyze sales by region for last quarter')" :
-                                    mode === AppMode.OPTIMIZER ? "Describe optimization goal..." :
-                                    "Enter prompt or paste SQL..."
-                                }
-                                value={nlPrompt}
-                                onChange={(e) => setNlPrompt(e.target.value)}
-                                onKeyDown={(e) => {
-                                    if(e.key === 'Enter' && !e.shiftKey) {
-                                        e.preventDefault();
-                                        if(mode === AppMode.BUILDER) handleGenerateSql();
-                                        else if(mode === AppMode.OPTIMIZER) handleOptimize();
-                                        else if(mode === AppMode.CONVERTER) handleConvert();
-                                    }
-                                }}
-                            />
-                             <div className="absolute right-2 bottom-2 flex items-center gap-2">
-                                {isProcessing && (
-                                    <div className="relative flex h-2 w-2">
-                                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                                      <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
-                                    </div>
-                                )}
-                                <div className="flex gap-1">
-                                    <button 
-                                        onClick={() => {
-                                            if(mode === AppMode.BUILDER) handleGenerateSql();
-                                            else if(mode === AppMode.OPTIMIZER) handleOptimize();
-                                            else if(mode === AppMode.CONVERTER) handleConvert();
-                                        }}
-                                        disabled={isProcessing || !nlPrompt.trim()}
-                                        className={`font-medium p-1.5 rounded-lg shadow-sm transition-all active:scale-95 disabled:opacity-50 disabled:grayscale ${
-                                            mode === AppMode.BUILDER ? 'bg-martian-primary text-white' :
-                                            mode === AppMode.OPTIMIZER ? 'bg-omop-cyan text-white' :
-                                            'bg-omop-magenta text-white'
-                                        }`}
-                                        title={
-                                            mode === AppMode.BUILDER ? "Generate SQL" :
-                                            mode === AppMode.OPTIMIZER ? "Optimize SQL" :
-                                            "Convert SQL"
-                                        }
-                                    >
-                                        {isProcessing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+
+                    {/* Mode Content */}
+                    <div className="p-4 flex gap-3 items-end">
+
+                        {/* BUILD: textarea + secondary tools */}
+                        {mode === AppMode.BUILDER && (
+                            <div className="flex-1 flex flex-col gap-2 min-w-0">
+                                <textarea
+                                    className="w-full bg-martian-bg/80 border border-martian-border rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-martian-primary transition-all resize-none shadow-inner h-[44px] focus:h-[72px] focus:bg-black/50"
+                                    placeholder="Describe the SQL you want — e.g. 'Show top 10 customers by revenue last quarter'"
+                                    value={nlPrompt}
+                                    onChange={(e) => setNlPrompt(e.target.value)}
+                                    onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleGenerateSql(); } }}
+                                />
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                    <span className="text-[10px] text-martian-muted/40 mr-0.5">Tools:</span>
+                                    <button onClick={handleGenerateData} disabled={isProcessing} title="Generate a table with realistic mock data from a description" className="flex items-center gap-1.5 bg-martian-surface hover:bg-martian-subtle border border-martian-border text-martian-text/80 hover:text-white px-2.5 py-1 rounded-lg text-[11px] font-medium transition-colors whitespace-nowrap disabled:opacity-40">
+                                        <Table className="w-3 h-3 text-martian-muted" /> Mock Data
                                     </button>
-                                    <button 
-                                        onClick={handleExplain}
-                                        disabled={isProcessing || !duckDbReady}
-                                        className="bg-omop-amber/90 hover:bg-omop-amber text-black font-medium p-1.5 rounded-lg shadow-sm transition-all active:scale-95 disabled:opacity-50 disabled:grayscale"
-                                        title="Explain Plan"
-                                    >
-                                        <GitMerge className="w-4 h-4" />
+                                    <button onClick={handleMlPrep} disabled={isProcessing} title="Generate one-hot encoding, label encoding, or scaling SQL for a column" className="flex items-center gap-1.5 bg-martian-surface hover:bg-martian-subtle border border-martian-border text-martian-text/80 hover:text-white px-2.5 py-1 rounded-lg text-[11px] font-medium transition-colors whitespace-nowrap disabled:opacity-40">
+                                        <Binary className="w-3 h-3 text-martian-muted" /> ML Features
                                     </button>
-                                    <button 
-                                        onClick={handleRunQuery}
-                                        disabled={isProcessing || !duckDbReady}
-                                        className="bg-green-600 hover:bg-green-500 text-white p-1.5 rounded-lg shadow-sm transition-all active:scale-95 disabled:opacity-50 disabled:grayscale"
-                                        title="Run SQL (Ctrl+Enter)"
-                                    >
-                                        {isProcessing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4 fill-current" />}
+                                    <button onClick={handleVectorOp} disabled={isProcessing || (!vssReady && !ftsReady)} title="Generate vector similarity or full-text search SQL using DuckDB extensions" className="flex items-center gap-1.5 bg-martian-surface hover:bg-martian-subtle border border-martian-border text-martian-text/80 hover:text-white px-2.5 py-1 rounded-lg text-[11px] font-medium transition-colors whitespace-nowrap disabled:opacity-40">
+                                        <Radar className="w-3 h-3 text-martian-muted" /> Vector Search
+                                    </button>
+                                    <div className="w-px bg-martian-border h-3.5 mx-0.5" />
+                                    <button onClick={handleAutoArchitect} disabled={isProcessing} title="AI agent that designs schema, creates tables with mock data, and runs the analysis — all in one step" className="flex items-center gap-1.5 bg-gradient-to-r from-martian-primary/20 to-omop-indigo/20 border border-martian-primary/40 hover:border-martian-primary/70 text-martian-primary px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all whitespace-nowrap disabled:opacity-40 active:scale-95">
+                                        {isProcessing ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />} AI Agent
                                     </button>
                                 </div>
-                             </div>
-                        </div>
-                    </div>
+                            </div>
+                        )}
 
-                    {/* Context Buttons Row */}
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-hide">
+                        {/* OPTIMIZE: description card + single button */}
+                        {mode === AppMode.OPTIMIZER && (
+                            <div className="flex-1 bg-omop-cyan/5 border border-omop-cyan/20 rounded-xl px-4 py-3">
+                                <p className="text-sm font-semibold text-omop-cyan">Optimize SQL in editor</p>
+                                <p className="text-[11px] text-martian-muted mt-0.5 leading-relaxed">Rewrites your current query for Snowflake performance — clustering keys, partition pruning, window function rewrites, and unnecessary join elimination. Replaces the editor SQL with the improved version.</p>
+                            </div>
+                        )}
+
+                        {/* CONVERT: dialect pills + description */}
+                        {mode === AppMode.CONVERTER && (
+                            <div className="flex-1 bg-omop-magenta/5 border border-omop-magenta/20 rounded-xl px-4 py-3">
+                                <p className="text-sm font-semibold text-omop-magenta">Convert SQL dialect</p>
+                                <p className="text-[11px] text-martian-muted mt-0.5 mb-2.5 leading-relaxed">Translates the editor SQL from Snowflake to your chosen dialect using SQLGlot — runs entirely in your browser, no server call.</p>
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                    <span className="text-[10px] text-martian-muted/50 mr-0.5">To:</span>
+                                    {([['tsql','T-SQL'],['postgres','PostgreSQL'],['bigquery','BigQuery'],['snowflake','Snowflake']] as const).map(([val, label]) => (
+                                        <button
+                                            key={val}
+                                            onClick={() => setTargetDialect(val)}
+                                            className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border transition-all ${targetDialect === val ? 'bg-omop-magenta text-white border-omop-magenta shadow-lg shadow-omop-magenta/20' : 'border-martian-border text-martian-muted hover:text-white hover:border-martian-border/80'}`}
+                                        >
+                                            {label}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Primary action buttons — always visible */}
+                        <div className="flex flex-col gap-1.5 shrink-0">
                             {mode === AppMode.BUILDER && (
-                                <>
-                                    <button onClick={handleGenerateSql} disabled={isProcessing} className="bg-martian-surface hover:bg-martian-subtle border border-martian-border text-martian-text px-3 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1.5 whitespace-nowrap">
-                                        {isProcessing ? <Loader2 className="w-3.5 h-3.5 animate-spin"/> : <Wand2 className="w-3.5 h-3.5 text-martian-muted" />}
-                                        Generate SQL
-                                    </button>
-                                    <button onClick={handleGenerateData} disabled={isProcessing} className="bg-martian-surface hover:bg-martian-subtle border border-martian-border text-martian-text px-3 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1.5 whitespace-nowrap">
-                                        <Table className="w-3.5 h-3.5 text-martian-muted" />
-                                        Gen Data
-                                    </button>
-                                    <button onClick={handleMlPrep} disabled={isProcessing} className="bg-martian-surface hover:bg-martian-subtle border border-martian-border text-martian-text px-3 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1.5 whitespace-nowrap">
-                                        {isProcessing ? <Loader2 className="w-3.5 h-3.5 animate-spin"/> : <Binary className="w-3.5 h-3.5 text-martian-muted" />}
-                                        ML Prep
-                                    </button>
-                                    <button onClick={handleVectorOp} disabled={isProcessing || (!vssReady && !ftsReady)} className="bg-martian-surface hover:bg-martian-subtle border border-martian-border text-martian-text px-3 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1.5 whitespace-nowrap">
-                                        {isProcessing ? <Loader2 className="w-3.5 h-3.5 animate-spin"/> : <Radar className="w-3.5 h-3.5 text-martian-muted" />}
-                                        Hybrid Search
-                                    </button>
-                                    <div className="w-px bg-martian-border h-4 mx-1"></div>
-                                    <button 
-                                        onClick={handleAutoArchitect} 
-                                        disabled={isProcessing} 
-                                        className="bg-gradient-to-r from-martian-primary/20 to-omop-indigo/20 border border-martian-primary/50 hover:bg-martian-primary/30 text-martian-primary px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all whitespace-nowrap active:scale-95"
-                                        title="Auto-Architect: Generates tables, mock data, and executes analysis query"
-                                    >
-                                        {isProcessing ? <Loader2 className="w-3.5 h-3.5 animate-spin"/> : <Sparkles className="w-3.5 h-3.5" />}
-                                        Auto-Architect
-                                    </button>
-                                </>
+                                <button
+                                    onClick={handleGenerateSql}
+                                    disabled={isProcessing || !nlPrompt.trim()}
+                                    className="bg-martian-primary hover:bg-martian-primary/90 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-all active:scale-95 disabled:opacity-40 disabled:grayscale shadow-lg shadow-martian-primary/20"
+                                >
+                                    {isProcessing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+                                    Generate
+                                </button>
                             )}
-
                             {mode === AppMode.OPTIMIZER && (
-                                <button onClick={handleOptimize} disabled={isProcessing} className="bg-omop-cyan/10 hover:bg-omop-cyan/20 border border-omop-cyan/50 text-omop-cyan px-3 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1.5">
-                                    {isProcessing ? <Loader2 className="w-3.5 h-3.5 animate-spin"/> : <Zap className="w-3.5 h-3.5" />}
+                                <button
+                                    onClick={handleOptimize}
+                                    disabled={isProcessing}
+                                    className="bg-omop-cyan hover:bg-omop-cyan/90 text-black px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-all active:scale-95 disabled:opacity-40 disabled:grayscale shadow-lg shadow-omop-cyan/20"
+                                >
+                                    {isProcessing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
                                     Optimize
                                 </button>
                             )}
-
                             {mode === AppMode.CONVERTER && (
-                                <button onClick={handleConvert} disabled={isProcessing || !pyodideReady} className="bg-omop-magenta/10 hover:bg-omop-magenta/20 border border-omop-magenta/50 text-omop-magenta px-3 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1.5">
-                                    {isProcessing ? <Loader2 className="w-3.5 h-3.5 animate-spin"/> : <ArrowRightLeft className="w-3.5 h-3.5" />}
-                                    Convert to {targetDialect.toUpperCase()}
+                                <button
+                                    onClick={handleConvert}
+                                    disabled={isProcessing || !pyodideReady}
+                                    className="bg-omop-magenta hover:bg-omop-magenta/90 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-all active:scale-95 disabled:opacity-40 disabled:grayscale shadow-lg shadow-omop-magenta/20"
+                                >
+                                    {isProcessing ? <Loader2 className="w-4 h-4 animate-spin" /> : <ArrowRightLeft className="w-4 h-4" />}
+                                    Convert
                                 </button>
                             )}
+                            <button
+                                onClick={handleExplain}
+                                disabled={isProcessing || !duckDbReady}
+                                className="bg-omop-amber/90 hover:bg-omop-amber text-black px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-all active:scale-95 disabled:opacity-40 disabled:grayscale"
+                                title="Show DuckDB execution plan for the current query"
+                            >
+                                <GitMerge className="w-4 h-4" /> Explain
+                            </button>
+                            <button
+                                onClick={handleRunQuery}
+                                disabled={isProcessing || !duckDbReady}
+                                className="bg-green-600 hover:bg-green-500 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-all active:scale-95 disabled:opacity-40 disabled:grayscale shadow-lg shadow-green-900/30"
+                                title="Execute SQL in DuckDB"
+                            >
+                                {isProcessing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4 fill-current" />}
+                                Run SQL
+                            </button>
                         </div>
                     </div>
                 </div>

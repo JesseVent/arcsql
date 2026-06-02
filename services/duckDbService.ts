@@ -330,7 +330,7 @@ export const exportTable = async (tableName: string, format: 'parquet' | 'csv' =
         
         // Copy from WASM FS to Blob
         const buffer = await db.copyFileToBuffer(fileName);
-        const blob = new Blob([buffer]);
+        const blob = new Blob([buffer.buffer as ArrayBuffer]);
         const url = URL.createObjectURL(blob);
         
         // Trigger download
