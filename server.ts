@@ -25,7 +25,7 @@ async function startApiServer() {
   const geminiService = await import("./services/geminiImplementation.js");
 
   const app = express();
-  const PORT = parseInt(process.env.API_PORT || "4001");
+  const PORT = parseInt(process.env.API_PORT || "4002");
 
   app.use(express.json());
 

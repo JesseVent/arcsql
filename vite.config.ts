@@ -2,8 +2,8 @@ import path from 'path';
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
-const API_PORT = parseInt(process.env.API_PORT || '4001');
-const VITE_PORT = parseInt(process.env.PORT || '4000');
+const API_PORT = parseInt(process.env.API_PORT || '4002');
+const VITE_PORT = parseInt(process.env.PORT || '4001');
 
 export default defineConfig({
   server: {

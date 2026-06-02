@@ -4,8 +4,8 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "concurrently \"tsx server.ts\" \"vite\"",
-    "api": "tsx server.ts",
+    "dev": "concurrently \"API_PORT=4002 tsx server.ts\" \"PORT=4001 API_PORT=4002 vite\"",
+    "api": "API_PORT=4002 tsx server.ts",
     "build": "vite build",
     "lint": "tsc --noEmit"
   },

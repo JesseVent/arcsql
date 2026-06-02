@@ -5,11 +5,18 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Commands
 
 ```bash
-pnpm install           # Install dependencies
-pnpm run dev           # Start dev server (Express + Vite, port 3000)
-pnpm run build         # Production build (Vite only, no server bundling)
-pnpm run lint          # Type-check only (tsc --noEmit)
+pnpm install    # Install dependencies
+pnpm run dev    # Start both servers — open http://localhost:4001
+pnpm run build  # Production build (Vite only)
+pnpm run lint   # Type-check only (tsc --noEmit)
 ```
+
+| Server | Default port | Purpose |
+|--------|-------------|---------|
+| Vite   | **4001**    | React SPA + HMR — open this in the browser |
+| API    | **4002**    | Express `/api/gemini` — Vite proxies here |
+
+Override: `PORT=XXXX API_PORT=YYYY pnpm run dev`
 
 No test suite exists in this project.
 
