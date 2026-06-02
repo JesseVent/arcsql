@@ -3,36 +3,36 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Gemini Snowflake Architect</title>
+    <title>ArcSQL</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/pyodide/v0.25.0/full/pyodide.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script>
       tailwind.config = {
         darkMode: 'class',
         theme: {
           extend: {
             fontFamily: {
-              sans: ['Inter', 'sans-serif'],
-              mono: ['JetBrains Mono', 'monospace'],
+              sans:    ['"Inter Variable"', 'Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+              mono:    ['"Martian Mono"', '"JetBrains Mono"', 'ui-monospace', 'monospace'],
+              display: ['"Martian Grotesk"', 'ui-sans-serif', 'sans-serif'],
             },
             colors: {
               martian: {
-                bg: '#0f172a',
-                surface: '#1e293b',
-                subtle: '#334155',
-                border: '#475569',
-                text: '#f1f5f9',
-                muted: '#94a3b8',
-                primary: '#6366f1', 
+                bg:      'oklch(14.7% 0.004 49.25)',
+                surface: 'oklch(21.6% 0.006 56.043)',
+                subtle:  'oklch(37.4% 0.010 67.558)',
+                border:  'oklch(44.6% 0.043 257.281)',
+                text:    'oklch(96.8% 0.007 247.896)',
+                muted:   'oklch(70.4% 0.040 256.788)',
+                primary: 'oklch(70.7% 0.165 254.624)',
               },
               omop: {
-                cyan: '#06b6d4',
-                magenta: '#d946ef',
-                amber: '#f59e0b',
-                emerald: '#10b981',
-                indigo: '#6366f1',
-                slate: '#64748b',
+                cyan:    'oklch(60% 0.15 215)',
+                magenta: 'oklch(60% 0.22 295)',
+                amber:   'oklch(60% 0.18 50)',
+                emerald: 'oklch(60% 0.15 158)',
+                indigo:  'oklch(60% 0.22 268)',
+                slate:   'oklch(55.4% 0.046 257.417)',
               }
             }
           }
@@ -40,29 +40,105 @@
       }
     </script>
     <style>
-      body {
-        background-color: #0f172a;
-        color: #f1f5f9;
+      /* ── Fonts ──────────────────────────────────────────── */
+      @font-face {
+        font-family: "Inter Variable";
+        src: url("/fonts/InterVariable.woff2") format("woff2");
+        font-weight: 100 900;
+        font-style: normal;
+        font-display: swap;
       }
-      /* Custom scrollbar */
-      ::-webkit-scrollbar {
-        width: 8px;
-        height: 8px;
+
+      @font-face {
+        font-family: "Martian Grotesk";
+        src: url("/fonts/MartianGrotesk-VFVF.woff2") format("woff2-variations"),
+             url("/fonts/MartianGrotesk-VFVF.ttf")   format("truetype-variations");
+        font-weight: 100 900;
+        font-stretch: 50% 200%;
+        font-style: normal;
+        font-display: swap;
       }
-      ::-webkit-scrollbar-track {
-        background: #1e293b; 
+
+      @font-face {
+        font-family: "Martian Mono";
+        src: url("/fonts/MartianMono-VariableFont_wdth_wght.ttf") format("truetype-variations");
+        font-weight: 100 800;
+        font-stretch: 75% 112.5%;
+        font-style: normal;
+        font-display: swap;
       }
+
+      /* ── Design system tokens (dark) ────────────────────── */
+      :root {
+        /* Harmony palette subset — OKLCH from @evilmartians/harmony */
+        --stone-950: oklch(14.7% 0.004 49.25);
+        --stone-900: oklch(21.6% 0.006 56.043);
+        --stone-700: oklch(37.4% 0.010 67.558);
+        --slate-100: oklch(96.8% 0.007 247.896);
+        --slate-400: oklch(70.4% 0.040 256.788);
+        --slate-600: oklch(44.6% 0.043 257.281);
+        --blue-400:  oklch(70.7% 0.165 254.624);
+
+        /* Semantic surface tokens */
+        --agl-bg:        var(--stone-950);
+        --agl-surface:   var(--stone-900);
+        --agl-surface-2: var(--stone-700);
+        --agl-fg:        var(--slate-100);
+        --agl-fg-muted:  var(--slate-400);
+        --agl-border:    var(--slate-600);
+        --agl-accent:    var(--blue-400);
+
+        /* Agent-prism category hues — L=60%, hue-only varies */
+        --agl-cat-retrieval: oklch(60% 0.15 215);
+        --agl-cat-llm:       oklch(60% 0.22 295);
+        --agl-cat-tool:      oklch(60% 0.18 50);
+        --agl-cat-embedding: oklch(60% 0.15 158);
+        --agl-cat-agent:     oklch(60% 0.22 268);
+
+        /* Motion */
+        --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+        --dur-fast: 120ms;
+        --dur-base: 200ms;
+      }
+
+      /* ── Base ───────────────────────────────────────────── */
+      html, body {
+        background: var(--agl-bg);
+        color: var(--agl-fg);
+        font-family: "Inter Variable", Inter, ui-sans-serif, system-ui, sans-serif;
+        -webkit-font-smoothing: antialiased;
+        text-rendering: optimizeLegibility;
+      }
+
+      ::selection {
+        background: color-mix(in oklch, var(--agl-accent) 22%, transparent);
+        color: var(--agl-fg);
+      }
+
+      /* ── Scrollbar ──────────────────────────────────────── */
+      ::-webkit-scrollbar { width: 6px; height: 6px; }
+      ::-webkit-scrollbar-track { background: var(--agl-bg); }
       ::-webkit-scrollbar-thumb {
-        background: #475569; 
-        border-radius: 4px;
+        background: var(--agl-border);
+        border-radius: 3px;
       }
       ::-webkit-scrollbar-thumb:hover {
-        background: #64748b; 
+        background: color-mix(in oklch, var(--agl-accent) 60%, var(--agl-border));
       }
+
+      /* ── Utilities ──────────────────────────────────────── */
       .glass-panel {
-        background: rgba(30, 41, 59, 0.7);
+        background: color-mix(in oklch, var(--agl-surface) 70%, transparent);
         backdrop-filter: blur(10px);
-        border: 1px solid rgba(71, 85, 105, 0.5);
+        border: 1px solid color-mix(in oklch, var(--agl-border) 50%, transparent);
+      }
+
+      /* Line-clamp shim for prose previews */
+      .line-clamp-2 {
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
       }
     </style>
   <script type="importmap">

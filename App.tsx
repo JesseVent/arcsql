@@ -692,7 +692,7 @@ export default function App() {
         <div className="flex items-center gap-4">
              <div className="flex items-center gap-2">
                  <Bot className="w-5 h-5 text-martian-primary" />
-                 <span className="text-sm font-bold text-white tracking-tight">ArcSQL</span>
+                 <span className="font-display text-sm font-bold text-white tracking-tight">ArcSQL</span>
              </div>
 
              {/* Layout Controls - Grouped */}
@@ -1087,7 +1087,7 @@ export default function App() {
                             >
                                 <Icon className="w-4 h-4 shrink-0" />
                                 <div>
-                                    <div className="text-xs font-bold leading-tight">{label}</div>
+                                    <div className="font-display text-xs font-bold leading-tight tracking-tight">{label}</div>
                                     <div className="text-[10px] text-martian-muted/60 leading-tight mt-0.5">{desc}</div>
                                 </div>
                             </button>
