@@ -35,6 +35,7 @@ import {
   ChevronRight,
   Trash2,
   RefreshCw,
+  FlaskConical,
 } from 'lucide-react';
 
 import { initDuckDB, runQuery, createTable, getTableNames, exportTable, disconnectSource, isVssAvailable, isFtsAvailable, explainQuery, splitSqlStatements, getTableSchema } from './services/duckDbService';
@@ -58,7 +59,8 @@ import { HelpPage } from './components/HelpPage';
 import { SnippetList } from './components/SnippetList';
 import { SnippetManager } from './components/SnippetManager';
 import { GlobalSearch } from './components/GlobalSearch';
-import { AppMode, QueryResult, LogEntry, DataSource, HistoryEntry, ColumnInfo } from './types';
+import { EvalManager } from './components/EvalManager';
+import { AppMode, QueryResult, LogEntry, DataSource, HistoryEntry, ColumnInfo, EvalCase, EvalRun } from './types';
 // @ts-ignore
 import { format } from 'sql-formatter';
 
@@ -110,6 +112,7 @@ export default function App() {
   const [isSnippetManagerOpen, setIsSnippetManagerOpen] = useState(false);
   const [isHelpOpen, setIsHelpOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [isEvalsOpen, setIsEvalsOpen] = useState(false);
   const [dataSources, setDataSources] = useState<DataSource[]>([]);
   const [isSupabaseDbConfigured, setIsSupabaseDbConfigured] = useState(false);
   const [supabaseLoggedInUser, setSupabaseLoggedInUser] = useState<any>(null);
@@ -578,6 +581,45 @@ export default function App() {
     setIsProcessing(false);
   };
 
+  const runEval = async (ev: EvalCase): Promise<EvalRun> => {
+    const t0 = performance.now();
+    let generatedSql = '';
+    let execResult: QueryResult = { rows: [], columns: [] };
+
+    try {
+      generatedSql = formatSql(await generateSnowflakeSql(ev.prompt, ''));
+      let runnableSql = generatedSql;
+      if (pyodideReady) {
+        try { const t = await transpileSql(generatedSql, 'snowflake'); if (t.sql) runnableSql = t.sql; } catch (e) {}
+      }
+      execResult = await runQuery(runnableSql);
+    } catch (err: any) {
+      return { evalId: ev.id, runAt: new Date().toISOString(), passed: false, generatedSql, executionTimeMs: performance.now() - t0, assertions: [], error: err.message || 'Unknown error' };
+    }
+
+    const assertionResults = ev.assertions.map(a => {
+      switch (a.type) {
+        case 'no_error':         return { label: a.label, passed: !execResult.error,                                              actual: execResult.error || null };
+        case 'returns_rows':     return { label: a.label, passed: !execResult.error && execResult.rows.length > 0,                actual: `${execResult.rows.length} rows` };
+        case 'row_count_equals': return { label: a.label, passed: execResult.rows.length === (a.params?.count ?? 0),             actual: `${execResult.rows.length} rows` };
+        case 'row_count_gte':    return { label: a.label, passed: execResult.rows.length >= (a.params?.min ?? 1),                actual: `${execResult.rows.length} rows` };
+        case 'has_column':       return { label: a.label, passed: execResult.columns.includes(a.params?.value ?? ''),            actual: execResult.columns.join(', ') };
+        case 'sql_contains':     return { label: a.label, passed: generatedSql.toLowerCase().includes((a.params?.value ?? '').toLowerCase()), actual: null };
+        case 'sql_not_contains': return { label: a.label, passed: !generatedSql.toLowerCase().includes((a.params?.value ?? '').toLowerCase()), actual: null };
+        default:                 return { label: a.label, passed: false, actual: 'unknown' };
+      }
+    });
+
+    return {
+      evalId: ev.id,
+      runAt: new Date().toISOString(),
+      passed: !execResult.error && assertionResults.every(r => r.passed),
+      generatedSql,
+      executionTimeMs: performance.now() - t0,
+      assertions: assertionResults,
+    };
+  };
+
   const handleConvert = async () => {
     if (!sql.trim()) return;
     if (!pyodideReady) {
@@ -784,9 +826,15 @@ export default function App() {
         }}
       />
 
-      <HelpPage 
-        isOpen={isHelpOpen} 
-        onClose={() => setIsHelpOpen(false)} 
+      <HelpPage
+        isOpen={isHelpOpen}
+        onClose={() => setIsHelpOpen(false)}
+      />
+
+      <EvalManager
+        isOpen={isEvalsOpen}
+        onClose={() => setIsEvalsOpen(false)}
+        onRunEval={runEval}
       />
 
       {/* Header */}
@@ -876,8 +924,16 @@ export default function App() {
             </button>
 
             <div className="h-4 w-px bg-martian-border mx-1 hidden lg:block"></div>
-            
-            <button 
+
+            <button
+                onClick={() => setIsEvalsOpen(true)}
+                className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-omop-emerald/10 border border-omop-emerald/30 text-omop-emerald hover:bg-omop-emerald/20 transition-all text-sm font-medium"
+            >
+                <FlaskConical className="w-4 h-4" />
+                Evals
+            </button>
+
+            <button
                 onClick={() => setIsHelpOpen(true)}
                 className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-martian-primary/10 border border-martian-primary/30 text-martian-primary hover:bg-martian-primary/20 transition-all text-sm font-medium"
             >

@@ -47,6 +47,45 @@ export interface MlRequest {
   operation: 'one_hot' | 'label' | 'min_max_scale' | 'z_score_scale';
 }
 
+export type AssertionType =
+  | 'no_error'
+  | 'returns_rows'
+  | 'row_count_equals'
+  | 'row_count_gte'
+  | 'has_column'
+  | 'sql_contains'
+  | 'sql_not_contains';
+
+export interface EvalAssertion {
+  type: AssertionType;
+  label: string;
+  params?: Record<string, any>;
+}
+
+export interface EvalCase {
+  id: string;
+  name: string;
+  prompt: string;
+  assertions: EvalAssertion[];
+  createdAt: string;
+}
+
+export interface AssertionResult {
+  label: string;
+  passed: boolean;
+  actual?: string | null;
+}
+
+export interface EvalRun {
+  evalId: string;
+  runAt: string;
+  passed: boolean;
+  generatedSql: string;
+  executionTimeMs: number;
+  assertions: AssertionResult[];
+  error?: string;
+}
+
 export interface HistoryEntry {
   id: string;
   sql: string;
