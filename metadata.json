@@ -1,0 +1,5 @@
+{
+  "name": "Gemini Snowflake Architect",
+  "description": "An advanced SQL builder, optimizer, and converter for Snowflake using Gemini, Pyodide (SQLGlot), and DuckDB-WASM for in-browser execution.",
+  "requestFramePermissions": []
+}
