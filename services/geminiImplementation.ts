@@ -183,12 +183,17 @@ export const fixSqlError = async (sql: string, error: string, availableTables: s
   }
 };
 
-export const optimizeSnowflakeSql = async (sql: string): Promise<{ optimizedSql: string; explanation: string }> => {
+export const optimizeSnowflakeSql = async (sql: string, explainPlan?: string): Promise<{ optimizedSql: string; explanation: string }> => {
   try {
     const cleanSql = scrubPii(sql);
+    const planSection = explainPlan
+      ? `\nCurrent Execution Plan (DuckDB EXPLAIN output):\n${explainPlan}\n\nFocus your rewrite on reducing the expensive operators shown above — fewer HASH_JOINs, eliminated CROSS_PRODUCTs, better filter pushdown.`
+      : '';
+
     const prompt = `
-      Analyze the following SQL query for Snowflake optimization opportunities.
-      Consider clustering, partition pruning, unnecessary joins, and window function usage.
+      Analyze the following SQL query for Snowflake/DuckDB optimization opportunities.
+      Consider clustering, partition pruning, unnecessary joins, window function usage, and filter pushdown.
+      ${planSection}
 
       SQL TO OPTIMIZE:
       ${cleanSql}

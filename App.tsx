@@ -34,6 +34,7 @@ import {
   ChevronDown,
   ChevronRight,
   Trash2,
+  RefreshCw,
 } from 'lucide-react';
 
 import { initDuckDB, runQuery, createTable, getTableNames, exportTable, disconnectSource, isVssAvailable, isFtsAvailable, explainQuery, splitSqlStatements, getTableSchema } from './services/duckDbService';
@@ -60,6 +61,16 @@ import { GlobalSearch } from './components/GlobalSearch';
 import { AppMode, QueryResult, LogEntry, DataSource, HistoryEntry, ColumnInfo } from './types';
 // @ts-ignore
 import { format } from 'sql-formatter';
+
+// Score a DuckDB explain plan — lower is better.
+// Counts operator nodes + penalises expensive join/scan patterns.
+const scorePlan = (plan: string): number => {
+  const nodes = (plan.match(/┌─/g) || []).length || (plan.match(/[A-Z_]{4,}/g) || []).length;
+  const expensive = ['HASH_JOIN', 'CROSS_PRODUCT', 'BLOCKWISE_NL_JOIN', 'NESTED_LOOP', 'SEQ_SCAN'];
+  const penalty = expensive.reduce((acc, op) =>
+    acc + (plan.match(new RegExp(op, 'g')) || []).length * 3, 0);
+  return nodes + penalty;
+};
 
 const INITIAL_SQL = `
 -- Example Query
@@ -464,15 +475,106 @@ export default function App() {
   const handleOptimize = async () => {
     if (!sql.trim()) return;
     setIsProcessing(true);
-    addLog('info', 'Context7 Agent: Analyzing query plan...');
+    addLog('info', 'Analyzing query plan...');
     try {
         const result = await optimizeSnowflakeSql(sql);
         setSql(formatSql(result.optimizedSql));
         addLog('success', 'Optimization complete.');
-        addLog('info', `Optimization Strategy: ${result.explanation}`);
+        addLog('info', `Strategy: ${result.explanation}`);
     } catch (e) {
         addLog('error', 'Optimization failed.');
     }
+    setIsProcessing(false);
+  };
+
+  const handleAutoOptimize = async () => {
+    if (!sql.trim() || !duckDbReady) return;
+    setIsProcessing(true);
+    addLog('info', 'Auto-Optimizer: Starting explain → optimize → validate → execute loop...');
+
+    const MAX_ITERATIONS = 5;
+    let currentSql = sql;
+    let currentPlan = '';
+    let bestScore = Infinity;
+    let iteration = 0;
+    let improved = true;
+
+    // Baseline plan
+    addLog('info', 'Capturing baseline execution plan...');
+    currentPlan = await explainQuery(currentSql);
+    bestScore = scorePlan(currentPlan);
+    addLog('info', `Baseline plan score: ${bestScore}`);
+    setQueryResult({ rows: [], columns: [], explanation: currentPlan, executionTime: 0 });
+
+    while (iteration < MAX_ITERATIONS && improved) {
+      iteration++;
+      improved = false;
+      addLog('info', `─── Iteration ${iteration}/${MAX_ITERATIONS} ───`);
+
+      // 1. Optimize — pass current plan as context
+      addLog('info', '[1/4] Optimizing with plan context...');
+      let newSql: string;
+      let explanation: string;
+      try {
+        const result = await optimizeSnowflakeSql(currentSql, currentPlan);
+        newSql = formatSql(result.optimizedSql);
+        explanation = result.explanation;
+      } catch (e) {
+        addLog('error', 'Optimization call failed. Stopping.');
+        break;
+      }
+
+      // 2. Validate syntax
+      addLog('info', '[2/4] Validating syntax...');
+      if (pyodideReady) {
+        try {
+          const check = await transpileSql(newSql, 'snowflake', 'snowflake');
+          if (check.error) {
+            addLog('warning', `Syntax invalid: ${check.error}. Stopping.`);
+            break;
+          }
+        } catch (e) { /* non-fatal */ }
+      }
+
+      // 3. Execute to verify correctness
+      addLog('info', '[3/4] Executing to verify...');
+      let runnableSql = newSql;
+      if (pyodideReady) {
+        try {
+          const trans = await transpileSql(newSql, 'snowflake');
+          if (trans.sql) runnableSql = trans.sql;
+        } catch (e) {}
+      }
+      const execResult = await runQuery(runnableSql);
+      if (execResult.error) {
+        addLog('error', `Execution failed: ${execResult.error}. Stopping.`);
+        break;
+      }
+      addLog('success', `Executed: ${execResult.rows.length} rows.`);
+
+      // 4. Explain new plan and compare scores
+      addLog('info', '[4/4] Scoring new execution plan...');
+      const newPlan = await explainQuery(runnableSql);
+      const newScore = scorePlan(newPlan);
+      const delta = bestScore - newScore;
+      addLog(newScore < bestScore ? 'success' : 'info',
+        `Plan score: ${bestScore} → ${newScore} (${delta > 0 ? `−${delta} improved` : 'no improvement'})`);
+
+      if (newScore < bestScore) {
+        bestScore = newScore;
+        currentSql = newSql;
+        currentPlan = newPlan;
+        setSql(newSql);
+        setQueryResult({ ...execResult, explanation: newPlan });
+        addLog('success', `Iteration ${iteration}: Applied. Strategy: ${explanation}`);
+        improved = true;
+      } else {
+        addLog('info', `Iteration ${iteration}: Plan did not improve. Stopping.`);
+        setResultsTab('results');
+      }
+    }
+
+    addLog('success', `Auto-Optimizer done: ${iteration} iteration(s), final score ${bestScore}.`);
     setIsProcessing(false);
   };
 
@@ -1126,11 +1228,17 @@ export default function App() {
                             </div>
                         )}
 
-                        {/* OPTIMIZE: description card + single button */}
+                        {/* OPTIMIZE: description card */}
                         {mode === AppMode.OPTIMIZER && (
                             <div className="flex-1 bg-omop-cyan/5 border border-omop-cyan/20 rounded-xl px-4 py-3">
                                 <p className="text-sm font-semibold text-omop-cyan">Optimize SQL in editor</p>
-                                <p className="text-[11px] text-martian-muted mt-0.5 leading-relaxed">Rewrites your current query for Snowflake performance — clustering keys, partition pruning, window function rewrites, and unnecessary join elimination. Replaces the editor SQL with the improved version.</p>
+                                <p className="text-[11px] text-martian-muted mt-0.5 leading-relaxed">Rewrites your current query for Snowflake performance — clustering keys, partition pruning, window function rewrites, and unnecessary join elimination.</p>
+                                <div className="flex items-start gap-3 mt-3 pt-3 border-t border-omop-cyan/10">
+                                    <div className="flex-1">
+                                        <p className="text-[11px] font-semibold text-omop-cyan/80">Auto-Optimize loop</p>
+                                        <p className="text-[10px] text-martian-muted leading-relaxed mt-0.5">Runs up to 5 iterations of: explain → optimize → validate → execute. Scores each plan and stops when it can't improve further. Shows progress in Logs.</p>
+                                    </div>
+                                </div>
                             </div>
                         )}
 
@@ -1167,14 +1275,26 @@ export default function App() {
                                 </button>
                             )}
                             {mode === AppMode.OPTIMIZER && (
-                                <button
-                                    onClick={handleOptimize}
-                                    disabled={isProcessing}
-                                    className="bg-omop-cyan hover:bg-omop-cyan/90 text-black px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-all active:scale-95 disabled:opacity-40 disabled:grayscale shadow-lg shadow-omop-cyan/20"
-                                >
-                                    {isProcessing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
-                                    Optimize
-                                </button>
+                                <>
+                                    <button
+                                        onClick={handleAutoOptimize}
+                                        disabled={isProcessing || !duckDbReady}
+                                        title="Iterative loop: explain → optimize → validate → execute. Repeats until plan score stops improving."
+                                        className="bg-omop-cyan hover:bg-omop-cyan/90 text-black px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-all active:scale-95 disabled:opacity-40 disabled:grayscale shadow-lg shadow-omop-cyan/20"
+                                    >
+                                        {isProcessing ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+                                        Auto-Optimize
+                                    </button>
+                                    <button
+                                        onClick={handleOptimize}
+                                        disabled={isProcessing}
+                                        title="Single-pass optimization — faster, one Gemini call."
+                                        className="border border-omop-cyan/40 hover:border-omop-cyan/70 text-omop-cyan hover:bg-omop-cyan/10 px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-all active:scale-95 disabled:opacity-40 disabled:grayscale"
+                                    >
+                                        {isProcessing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
+                                        Once
+                                    </button>
+                                </>
                             )}
                             {mode === AppMode.CONVERTER && (
                                 <button

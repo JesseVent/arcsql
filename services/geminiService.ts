@@ -28,8 +28,8 @@ export const fixSqlError = async (sql: string, error: string, availableTables: s
     return callGeminiApi("fixSqlError", [sql, error, availableTables]);
 };
 
-export const optimizeSnowflakeSql = async (sql: string): Promise<{ optimizedSql: string; explanation: string }> => {
-    return callGeminiApi("optimizeSnowflakeSql", [sql]);
+export const optimizeSnowflakeSql = async (sql: string, explainPlan?: string): Promise<{ optimizedSql: string; explanation: string }> => {
+    return callGeminiApi("optimizeSnowflakeSql", [sql, explainPlan]);
 };
 
 export const generateMockData = async (tableDescription: string): Promise<{ tableName: string; schemaSql: string; data: any[] }> => {

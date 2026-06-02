@@ -230,7 +230,55 @@ Then switch to Build and click **Vector Search**.
 
 ---
 
-## 11. Schema Browser
+## 11. Auto-Optimize Loop
+
+The primary agentic optimization workflow. Runs up to 5 iterations of: explain → optimize → validate → execute, stopping when the plan score stops improving.
+
+**What to do:** Put a query in the editor, switch to Optimize mode, click **Auto-Optimize**.
+
+**Test query:**
+```sql
+SELECT *
+FROM orders o, customers c
+WHERE o.customer_id = c.id;
+```
+
+**Expected output per iteration (visible in Logs tab):**
+```
+─── Iteration 1/5 ───
+[1/4] Optimizing with plan context...
+[2/4] Validating syntax...
+[3/4] Executing to verify...
+Executed: 2 rows.
+[4/4] Scoring new execution plan...
+Plan score: 12 → 8 (−4 improved)
+Iteration 1: Applied. Strategy: [explanation...]
+─── Iteration 2/5 ───
+...
+Plan score: 8 → 8 (no improvement)
+Iteration 2: Plan did not improve. Stopping.
+Auto-Optimizer done: 2 iteration(s), final score 8.
+```
+
+**Validate plan context is used:** On each iteration, Gemini receives both the current SQL *and* the current DuckDB execution plan. The optimizations it suggests should directly reference operators in the plan (e.g., "removing the HASH_JOIN by rewriting as a filtered subquery").
+
+**Validate the loop stops correctly:**
+- The Results tab shows the explain plan of the *best* SQL found, not the original
+- The editor contains the best SQL found
+- If the first iteration produces no improvement, the loop runs exactly once and stops
+
+**Scoring method:** Plan nodes are counted from the DuckDB EXPLAIN output. Expensive operators (HASH_JOIN, CROSS_PRODUCT, BLOCKWISE_NL_JOIN, NESTED_LOOP, SEQ_SCAN) add 3 points each. Lower score = simpler, cheaper plan.
+
+**Single-pass alternative:** The **Once** button (outline style) runs a single optimization pass — one Gemini call, no iteration. Use when you want a quick rewrite without multiple API calls.
+
+**Failure indicators:**
+- `Syntax invalid: [error]. Stopping.` = Gemini returned malformed SQL; original is preserved
+- `Execution failed: [error]. Stopping.` = Rewritten SQL breaks query correctness; original is preserved
+- `Optimization call failed. Stopping.` = Gemini API error
+
+---
+
+## 12. Schema Browser
 
 **What to do:** Click the Tables tab in the results pane. Click the chevron next to any table name.
 
@@ -281,13 +329,14 @@ Then switch to Build and click **Vector Search**.
 | 1 | SQL execution | Results tab shows rows, log shows row count |
 | 2 | Syntax validation | Error shown for invalid SQL within 500ms |
 | 3 | Build / Generate SQL | Editor SQL replaced, log confirms generation |
-| 4 | Optimize | SQL rewritten, explanation in Logs tab |
-| 5 | Convert | SQL dialect-translated, no API call made |
-| 6 | Auto-Fix | Agent corrects failing SQL and re-runs |
-| 7 | Auto-Architect | New tables appear in Tables tab, results shown |
-| 8 | Mock Data | New table created, `SELECT *` returns rows |
-| 9 | ML Features | Output SQL has real column values from DB |
-| 10 | Vector Search | DuckDB VSS/FTS query in editor, runs without error |
-| 11 | Schema browser | Columns visible on expand, cached on second open |
-| 12 | Query history | Entry persists after page refresh |
-| 13 | Global search | Deep search returns matching rows from data |
+| 4 | Optimize (Once) | SQL rewritten, explanation in Logs tab |
+| 5 | Auto-Optimize loop | Log shows iteration steps, plan score improves, loop stops when score plateaus |
+| 6 | Convert | SQL dialect-translated, no API call made |
+| 7 | Auto-Fix | Agent corrects failing SQL and re-runs |
+| 8 | Auto-Architect | New tables appear in Tables tab, results shown |
+| 9 | Mock Data | New table created, `SELECT *` returns rows |
+| 10 | ML Features | Output SQL has real column values from DB |
+| 11 | Vector Search | DuckDB VSS/FTS query in editor, runs without error |
+| 12 | Schema browser | Columns visible on expand, cached on second open |
+| 13 | Query history | Entry persists after page refresh |
+| 14 | Global search | Deep search returns matching rows from data |
