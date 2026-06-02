@@ -61,11 +61,12 @@ export const transpileSql = async (sql: string, readDialect: string = 'tsql', wr
   const pythonCode = `
 import base64
 _sql = base64.b64decode('${b64}').decode('utf-8')
+output_val = ""
 try:
-    transpiled = transpile(_sql, read='${readDialect}', write='${writeDialect}')[0]
-    transpiled
+    output_val = transpile(_sql, read='${readDialect}', write='${writeDialect}')[0]
 except Exception as e:
-    f"ERROR: {str(e)}"
+    output_val = f"ERROR: {str(e)}"
+output_val
 `;
 
   const result = await pyodide.runPythonAsync(pythonCode);
@@ -85,11 +86,13 @@ export const checkSqlSyntax = async (sql: string): Promise<{ isValid: boolean; e
   const pythonCode = `
 import base64
 _sql = base64.b64decode('${b64}').decode('utf-8')
+output_val = ""
 try:
     parse_one(_sql, read='snowflake')
-    "VALID"
+    output_val = "VALID"
 except Exception as e:
-    str(e)
+    output_val = str(e)
+output_val
 `;
 
   const result = await pyodide.runPythonAsync(pythonCode);
