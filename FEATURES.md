@@ -1,259 +1,293 @@
-# ArcSQL — Features & Agentic Functionality
+# ArcSQL — Feature Validation Guide
 
-## What ArcSQL is
-
-A browser-native SQL workbench powered by Gemini and DuckDB WASM. Your data stays in the browser. Only PII-scrubbed prompts leave the machine to reach the Gemini API. The SQL engine, dialect transpiler, and all results run entirely client-side.
+This document exists so you can confirm that each feature and agentic workflow actually executes end-to-end. Every entry below lists what to do, what observable output confirms it ran, and what failure looks like.
 
 ---
 
-## Execution Engine
+## Prerequisites
 
-### In-browser SQL (DuckDB WASM)
+Before validating any AI feature, confirm the system status indicators in the header are green:
+- **Pyodide** — required for SQL syntax validation and Convert mode
+- **DuckDB** — required for all query execution
+- **VSS / FTS** — optional, required only for Vector Search
 
-Every query runs against a real DuckDB instance compiled to WebAssembly, loaded once at startup. No server query path, no round-trips for data.
-
-**Outcomes:**
-- Full SQL execution in milliseconds
-- Results displayed in a sortable, scrollable table with execution time
-- Multi-statement scripts (`;`-separated) execute sequentially; each statement logs its own row count and timing
-
-**Extensions loaded at boot:**
-- **VSS** — vector similarity search via HNSW indexes
-- **FTS** — full-text search via BM25 (`match_bm25`)
-- **Iceberg** — read Iceberg tables directly from a URL
-- **JSON** — JSON file reading and unnesting
-
-### SQL Editor
-
-Monaco-style editor (react-simple-code-editor + Prism) with Snowflake SQL syntax highlighting. Validates syntax live via SQLGlot (Pyodide) with a 500ms debounce — errors appear in-editor before you run anything.
-
-**Outcomes:**
-- Catch syntax errors before execution
-- Save the current query as a `.sql` file
-- Load any `.sql` or `.txt` file from disk into the editor
+Three seed tables are loaded at startup: `customers`, `orders`, `claims`. All validation steps below assume these are present.
 
 ---
 
-## AI Modes
+## 1. SQL Execution
 
-Three modes control what the prompt textarea and primary button do. The mode selector shows each one's purpose inline.
+**What to run:**
+```sql
+SELECT * FROM customers;
+```
 
-### Build — Write SQL from a description
+**Expected output:**
+- Results tab shows 3 rows (Acme Corp, Globex, Soylent Corp)
+- Execution time appears in the log (e.g. `Query executed: 3 rows.`)
+- Columns: `id`, `customer_name`, `region`
 
-**How it works:** Your natural-language prompt + the current editor SQL are sent to Gemini with a Snowflake expert system instruction. The model returns SQL that is then formatted (sql-formatter, Snowflake dialect, uppercase keywords) and placed in the editor.
+**Multi-statement validation:**
+```sql
+SELECT COUNT(*) FROM customers;
+SELECT COUNT(*) FROM orders;
+```
+**Expected:** Two log entries — `[1/2] 1 rows` and `[2/2] 1 rows` — and the last result shown in the Results tab.
 
-**Outcomes:**
-- New SQL in the editor, ready to run or iterate on
-- Prompt can reference tables already loaded (e.g. "show top customers from the customers table")
-- Current editor content is included as context so you can ask for modifications ("add a WHERE clause for region = US")
-
-### Optimize — Rewrite editor SQL for performance
-
-**How it works:** The current editor SQL is sent to Gemini with a request to analyze for Snowflake performance issues. The model returns a JSON object: `{ optimizedSql, explanation }`. The optimized SQL replaces the editor content.
-
-**What it looks for:**
-- Clustering key usage and partition pruning
-- Unnecessary joins and subqueries
-- Window function rewrites (replacing correlated subqueries)
-- Missing QUALIFY clauses
-- Aggregation and grouping efficiency
-
-**Outcomes:**
-- Rewritten SQL in the editor
-- Markdown explanation in the Logs tab describing what changed and why
-
-### Convert — Translate to another SQL dialect
-
-**How it works:** Uses SQLGlot running inside Pyodide (Python in the browser). No Gemini call — entirely local. Parses the editor SQL as Snowflake and transpiles to the selected target.
-
-**Supported targets:** T-SQL · PostgreSQL · BigQuery · Snowflake
-
-**Outcomes:**
-- Editor SQL replaced with the translated version
-- Runs instantly (no network call)
-- Handles function name mapping, date syntax, string functions, window frame syntax
+**Failure indicator:** Red error in the Logs tab. DuckDB not ready = Run SQL button is disabled.
 
 ---
 
-## Agentic Features
+## 2. Live Syntax Validation
 
-These features involve multi-step reasoning, tool use, or autonomous decision-making beyond a single prompt → response.
+**What to do:** Type invalid SQL in the editor and wait 500ms.
 
-### Auto-Architect (AI Agent)
+```sql
+SELEKT * FORM customers
+```
 
-The most capable agentic feature. Uses **Gemini function calling** (tool use) — the model receives two tools and decides when and how to call them.
+**Expected output:**
+- Red "Syntax Error" indicator appears in the editor toolbar
+- Error detail shown in the red bar below the editor
+- No execution needed — validation runs client-side via SQLGlot
 
-**Tools available to the model:**
-- `create_table(tableName, schemaSql, data[])` — creates a DuckDB table with provided schema and row data
-- `run_sql_query(sql)` — executes a SQL statement and returns results
-
-**How it works:**
-1. Your prompt is sent to Gemini alongside the tool definitions
-2. Gemini designs a schema, generates mock data, and decides which queries to run — returning function call objects rather than text
-3. ArcSQL executes each tool call sequentially against DuckDB
-4. Results are displayed and the executed SQL appears in the editor
-
-**Example prompt:** *"Analyze churn risk by customer segment for a SaaS company"*
-
-**Outcomes:**
-- One or more new tables created in DuckDB with realistic mock data
-- Analysis query executed and results displayed
-- Editor populated with the final SQL Gemini ran
-- Everything is visible in the Tables tab immediately
-
-**What makes it agentic:** The model decides what schema to create, what data to generate, and what queries to write — you describe an outcome, not steps.
-
-### Auto-Fix Loop
-
-When a query fails execution, ArcSQL automatically attempts to repair it without user intervention.
-
-**How it works:**
-1. Query runs and returns an error from DuckDB
-2. The failing SQL + error message + list of available table names are sent to Gemini's `fixSqlError` function
-3. Gemini returns corrected SQL
-4. The fixed SQL replaces the editor content and re-runs
-5. Repeats up to 2 times with 500ms backoff between attempts
-
-**What it fixes:**
-- Table or column name mismatches (suggests closest available table)
-- Snowflake-specific syntax that DuckDB doesn't support
-- Missing casts, type errors, malformed date literals
-
-**Outcomes:**
-- Working query with no manual intervention
-- "Agent: Fixed SQL syntax" confirmation in the Logs tab
-- Fixed SQL visible in the editor (transparent — you see what changed)
-
-**Note:** Auto-fix only applies to single-statement runs. Multi-statement scripts skip it to avoid cascading unpredictable rewrites.
-
-### ML Features
-
-A two-step agentic pipeline for feature engineering.
-
-**How it works:**
-1. **Parse** — prompt sent to Gemini to extract: table name, column name, operation type (`one_hot`, `label`, `min_max_scale`, `z_score_scale`)
-2. **Fetch** — if one-hot encoding is requested, ArcSQL queries DuckDB for distinct values in that column (up to 50)
-3. **Generate** — the extracted metadata + distinct values are sent to Gemini to generate the feature engineering SQL
-
-**Supported operations:**
-- **One-hot encoding** — `CASE WHEN col = 'X' THEN 1 ELSE 0 END` for each distinct value
-- **Label encoding** — `DENSE_RANK()` over the column
-- **Min-max scaling** — `(x - min) / (max - min)` using window functions
-- **Z-score scaling** — `(x - avg) / stddev` using window functions
-
-**Example prompt:** *"One hot encode region in customers"*
-
-**Outcomes:**
-- SQL SELECT with new feature columns added, ready to run or save as a view
-- Works against actual data in your DuckDB session (distinct values are real, not assumed)
-
-### Mock Data Generation
-
-Describe a dataset; Gemini designs the schema and populates it.
-
-**How it works:** Prompt is sent to Gemini requesting a JSON response: `{ tableName, schemaSql, data[] }` with at least 10 rows. ArcSQL then creates the table in DuckDB using the returned schema and data.
-
-**Special handling:**
-- If your prompt mentions "vectors" or "embeddings" — creates a `FLOAT[]` column with random array data so vector search features work immediately
-- If your prompt mentions "text search" — ensures a long VARCHAR column with searchable content is included
-
-**Outcomes:**
-- New table in DuckDB with realistic rows
-- Table appears immediately in the Tables tab
-- Can be queried, exported, or used as input to other features
-
-### Vector Search SQL Generation
-
-Generates DuckDB VSS and FTS SQL from a plain-English description.
-
-**How it works:** Prompt is sent to Gemini with full context on DuckDB's `vss` and `fts` extensions, available syntax, and the current tables. Returns ready-to-run SQL.
-
-**Generated patterns:**
-- `array_cosine_similarity(vec_a, vec_b)` for vector similarity
-- `CREATE INDEX ... USING HNSW (vector_column)` for index creation
-- `PRAGMA create_fts_index(...)` + `match_bm25(...)` for text search
-- **Hybrid search** — CTE combining normalized vector score + BM25 score
-
-**Outcomes:**
-- SQL in the editor ready to run against your data
-- If text search is involved, the FTS index PRAGMA is prepended automatically
+**Failure indicator:** No error shown for clearly invalid SQL means Pyodide hasn't loaded yet.
 
 ---
 
-## Data Sources
+## 3. Build Mode — Generate SQL
 
-### Local Tables
-Seed data is loaded at startup (customers, orders, claims). Any table created via Mock Data or Auto-Architect persists for the session.
+**What to do:** Switch to Build mode, type a prompt, press Enter or click Generate.
 
-### Remote Files (URL)
-Connect via the Data Source Manager. Supported:
-- **Parquet** — `read_parquet('url')`
-- **CSV** — `read_csv_auto('url')`
-- **JSON** — `read_json_auto('url')`
-- **Iceberg** — `iceberg_scan('url')`
-- **Encrypted DuckDB** — `ATTACH 'url' AS alias (TYPE DUCKDB, READ_ONLY, KEY '...')`
+**Test prompt:** `Show total spend per customer`
 
-These become queryable views in DuckDB immediately.
+**Expected output:**
+- Editor content is replaced with formatted Snowflake SQL
+- SQL references the `customers` and `orders` tables from the session
+- Log entry: `SQL generated & formatted.`
 
-### Supabase
-Two connection methods:
-- **SDK** — uses the Supabase JS client with authenticated session; fetches via `from(table).select('*')`
-- **REST** — direct fetch to the Supabase REST endpoint with apikey header
+**Validate it runs:** Click Run SQL. Should return rows from the seeded data.
 
-Both materialise the data as a local DuckDB table for the session. Supabase credentials can be set at runtime in the UI — no restart required.
+**Failure indicator:** Log entry `Failed to generate SQL.` = Gemini API key missing or invalid. Check `.env.local` for `GEMINI_API_KEY`.
 
 ---
 
-## Workflow Tools
+## 4. Optimize Mode — Rewrite for Performance
 
-### Schema Browser
-Click any table in the Tables tab to expand its columns inline. Shows column name, type, PK badge, and NOT NULL marker. Schema is fetched once and cached for the session.
+**What to do:** Paste a query into the editor, switch to Optimize, click Optimize.
 
-### Query History
-Last 50 successful queries stored in `localStorage`. Each entry shows timestamp, execution time, and statement count for scripts. Click any entry to reload it into the editor. Persists across page refreshes.
+**Test query:**
+```sql
+SELECT *
+FROM orders o, customers c
+WHERE o.customer_id = c.id
+AND o.amount > 100;
+```
 
-### SQL Snippets
-Save any query with a name via the Snippet Manager. Snippets persist to `localStorage`. Load from the sidebar or the global search. Useful for recurring queries, templates, or reference SQL.
+**Expected output:**
+- Editor SQL is replaced with a rewritten version (likely using explicit JOIN syntax, possibly adding column selection)
+- Log entry: `Optimization complete.`
+- Log entry: `Optimization Strategy: [explanation of changes]`
 
-### Global Search (`⌘K`)
-Searches three sources simultaneously as you type:
-- **Tables** — by name
-- **Snippets** — by name and SQL content
-- **Data** — "Deep Search" scans VARCHAR/TEXT columns in all loaded tables via `ILIKE`
+**Validate the explanation:** Check the Logs tab — you should see a plain-English description of what changed and why (e.g. "replaced implicit cross join with explicit INNER JOIN for clarity and optimizer hints").
 
-Selecting a result loads the relevant SQL into the editor.
-
-### Export
-Any table can be exported to Parquet via the Tables tab. Triggers a browser download. Uses DuckDB's `COPY ... TO '...' (FORMAT PARQUET)` internally.
-
----
-
-## PII Handling
-
-Every prompt sent to Gemini passes through `piiService.ts` first. The scrubber strips:
-- Email addresses
-- Phone numbers (multiple formats)
-- Social Security Numbers
-- Credit card numbers
-- IPv4 addresses
-- Dates of birth (`DOB: MM/DD/YYYY` patterns)
-- ZIP codes
-
-Scrubbing is applied to both the user's prompt and any SQL context included with it. The original data in DuckDB is never affected.
+**Failure indicator:** No change to editor SQL and no log entry = Gemini call failed.
 
 ---
 
-## Outcomes Summary
+## 5. Convert Mode — Dialect Transpilation
 
-| Feature | Input | Output |
+**What to do:** Put Snowflake SQL in the editor, switch to Convert, select a target dialect, click Convert.
+
+**Test query (Snowflake):**
+```sql
+SELECT
+  customer_name,
+  IFF(region = 'US', 'domestic', 'international') AS market_type
+FROM customers
+QUALIFY ROW_NUMBER() OVER (PARTITION BY region ORDER BY id) = 1;
+```
+
+**Expected output for T-SQL target:**
+- `IFF()` becomes `IIF()` or `CASE WHEN`
+- `QUALIFY` clause is rewritten as a subquery with `WHERE rn = 1`
+- Log entry: `Converted Snowflake to TSQL dialect.`
+
+**No AI call is made.** This runs entirely in Pyodide. If Pyodide is not ready, the Convert button is disabled.
+
+**Failure indicator:** Log entry with error text = SQLGlot could not parse the input. The original SQL may have syntax errors; validate in Build mode first.
+
+---
+
+## 6. Auto-Fix Loop
+
+**What to do:** Run SQL that references a non-existent table.
+
+**Test query:**
+```sql
+SELECT * FROM customer_orders;
+```
+
+**Expected output:**
+- Log: `Failed: [error]`
+- Log: `Agent: Analyzing error...`
+- Gemini is called with the error + list of available tables (`customers`, `orders`, `claims`)
+- Editor SQL is updated to reference the correct table (`customers` or `orders`)
+- Log: `Agent: Fixed SQL syntax.`
+- Query re-runs and returns results
+
+**Validate the fix is visible:** The editor will show the corrected SQL — you can see exactly what the agent changed.
+
+**Failure indicator:** After 2 retries, log shows `Failed: [error]` with no further attempts. Either the error was unfixable or the API key is missing.
+
+---
+
+## 7. Auto-Architect (AI Agent with Tool Use)
+
+This is the primary agentic workflow. Gemini receives tool definitions and decides which to call.
+
+**What to do:** Switch to Build mode, type a prompt, click **AI Agent**.
+
+**Test prompt:** `Analyse product sales performance by category for Q1`
+
+**Expected output (each step visible in logs):**
+1. Log: `Creating table: [tableName]...` — Gemini called `create_table`
+2. Log: `Creating table: [tableName]...` — repeated for each table the model decides to create
+3. Log: `Running query: [sql]...` — Gemini called `run_sql_query`
+4. Results tab shows query output
+5. Editor is populated with the final SQL that ran
+6. Tables tab shows the newly created tables
+
+**Validate tool use occurred:** Open the Tables tab — new tables should exist that were not there before. These were created by the agent's tool calls, not by you.
+
+**Validate the query ran:** Results tab should have data. If the agent created meaningful mock data, the query should return non-empty results.
+
+**Failure indicator:**
+- Log: `Auto-Architect failed to execute plan.` = Gemini call error
+- Log: `Agent response: [text]` (with no tool calls) = Model chose to respond in text rather than use tools; try a more specific prompt
+
+---
+
+## 8. Mock Data Generation
+
+**What to do:** Switch to Build, type a description, click **Mock Data**.
+
+**Test prompt:** `Healthcare claims with diagnosis codes, procedures, and costs`
+
+**Expected output:**
+- Log: `Creating table [tableName]...`
+- Log: `Table [tableName] created with [N] rows.`
+- New table appears in the Tables tab
+- Running `SELECT * FROM [tableName] LIMIT 5` returns realistic rows
+
+**Validate the data:** Run a query against it. If your prompt mentioned "vectors" or "embeddings", a `FLOAT[]` column should be present. If you mentioned "text search", a long VARCHAR column should exist.
+
+**Failure indicator:** Log: `Data generation failed.` = Gemini returned malformed JSON or the create failed. Check the Logs tab for the specific error.
+
+---
+
+## 9. ML Features — Feature Engineering SQL
+
+**What to do:** Load the seed `customers` table, switch to Build, click **ML Features**.
+
+**Test prompt:** `One hot encode region in customers`
+
+**Expected output (3 steps):**
+1. Log: `ML Prep: Analyzing request...` — Gemini parses table/column/operation
+2. Log: `Target: one_hot on customers.region` — parsed correctly
+3. Log: `Fetching distinct values...` — ArcSQL queries DuckDB for real distinct values
+4. Log: `Generating feature engineering SQL...`
+5. Log: `ML Preprocessing SQL generated.`
+6. Editor contains a SELECT with one column per region value (`region_US`, `region_EU`, etc.)
+
+**Validate the pipeline ran:** Click Run SQL. The output should have the original columns plus the new binary indicator columns.
+
+**Validation that distinct values were real:** The column names in the output (e.g. `region_US`, `region_EU`) should match the actual values in the `customers` table, not invented ones.
+
+**Failure indicator:** Log: `Could not identify table or column name from prompt.` = Gemini couldn't parse the intent. Be more explicit: "one hot encode the region column in the customers table."
+
+---
+
+## 10. Vector Search SQL
+
+**Prerequisite:** VSS and/or FTS indicator must show in the header. If absent, these extensions didn't load.
+
+**What to do:** First create a table with vector data:
+
+**Test prompt for Mock Data:** `Product catalog with text descriptions and 5-dimension embeddings`
+
+Then switch to Build and click **Vector Search**.
+
+**Test prompt:** `Find products similar to product id 1 using vector similarity`
+
+**Expected output:**
+- Editor contains a valid DuckDB VSS query using `array_cosine_similarity()`
+- If a text search was requested, a `PRAGMA create_fts_index(...)` statement appears before the SELECT
+
+**Validate it runs:** Click Run SQL. If the mock data table was created with the right vector column type, it should return ranked results.
+
+**Failure indicator:** Log: `Neither VSS nor FTS extensions are available.` = Extensions failed to load at startup (visible in the boot log).
+
+---
+
+## 11. Schema Browser
+
+**What to do:** Click the Tables tab in the results pane. Click the chevron next to any table name.
+
+**Expected output:**
+- Row expands to show each column with name, type, PK badge (if applicable), NOT NULL badge
+- `customers` table should show: `id INTEGER`, `customer_name VARCHAR`, `region VARCHAR`
+- Subtitle updates to show column count: "Local · 3 cols"
+
+**Validate lazy loading:** Schema is only fetched when first expanded, not on page load. Opening and closing the same table multiple times should not produce additional log entries.
+
+---
+
+## 12. Query History
+
+**What to do:** Run any query successfully. Click the **History** tab.
+
+**Expected output:**
+- Entry appears with timestamp, execution time, and SQL preview
+- Click the entry — editor is populated with that query and tab switches to Results
+
+**Validate persistence:** Refresh the page. History entries should still be present (stored in `localStorage` under key `arcsql_history`).
+
+**Validate capacity:** After 50 successful queries, oldest entries are dropped. The tab badge shows the current count.
+
+---
+
+## 13. Global Search
+
+**What to do:** Press `⌘K`. Type a table name or value.
+
+**Test:** Type `customer`
+
+**Expected output:**
+- `customers` table appears under "Resources"
+- Any snippet containing "customer" appears
+- Clicking the result loads `SELECT * FROM customers LIMIT 100;` into the editor
+
+**Deep search validation:** Press Enter or click "Deep Search in Data". This runs `ILIKE` across all VARCHAR/TEXT columns in loaded tables.
+
+**Test:** Type `Acme` and press Enter. Should find the row from the `customers` table where `customer_name = 'Acme Corp'`.
+
+---
+
+## Validation Checklist
+
+| # | Feature | Pass condition |
 |---|---|---|
-| Run SQL | SQL in editor | Query results table, execution time |
-| Build | Natural-language prompt | Formatted SQL in editor |
-| Optimize | SQL in editor | Rewritten SQL + performance explanation |
-| Convert | SQL in editor + target dialect | Translated SQL in editor |
-| Auto-Architect | Goal description | Tables created + data populated + query results |
-| Auto-Fix | Failing query + DuckDB error | Corrected SQL + successful results |
-| ML Features | Column + operation description | Feature engineering SELECT |
-| Mock Data | Dataset description | New DuckDB table with rows |
-| Vector Search | Search goal description | VSS / FTS / hybrid SQL |
-| Deep Search | Search term | Matching rows across all tables |
+| 1 | SQL execution | Results tab shows rows, log shows row count |
+| 2 | Syntax validation | Error shown for invalid SQL within 500ms |
+| 3 | Build / Generate SQL | Editor SQL replaced, log confirms generation |
+| 4 | Optimize | SQL rewritten, explanation in Logs tab |
+| 5 | Convert | SQL dialect-translated, no API call made |
+| 6 | Auto-Fix | Agent corrects failing SQL and re-runs |
+| 7 | Auto-Architect | New tables appear in Tables tab, results shown |
+| 8 | Mock Data | New table created, `SELECT *` returns rows |
+| 9 | ML Features | Output SQL has real column values from DB |
+| 10 | Vector Search | DuckDB VSS/FTS query in editor, runs without error |
+| 11 | Schema browser | Columns visible on expand, cached on second open |
+| 12 | Query history | Entry persists after page refresh |
+| 13 | Global search | Deep search returns matching rows from data |
