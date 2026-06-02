@@ -1,38 +1,42 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { 
-  Database, 
-  Play, 
-  Wand2, 
-  ArrowRightLeft, 
-  Terminal, 
-  Loader2, 
-  CheckCircle2, 
+import {
+  Database,
+  Play,
+  Wand2,
+  ArrowRightLeft,
+  Terminal,
+  Loader2,
+  CheckCircle2,
   Table,
   Zap,
   MessageSquare,
-  Globe, 
-  PlusCircle, 
-  Sparkles, 
-  Binary, 
-  HardDrive, 
-  Radar, 
-  Activity, 
-  HelpCircle, 
-  BookMarked, 
-  GripVertical, 
-  GripHorizontal, 
-  PanelLeft, 
-  Columns2, 
-  Rows2, 
-  PanelBottom, 
-  Maximize2, 
-  Layout, 
-  Search as SearchIcon, 
-  Bot, 
-  GitMerge 
+  Globe,
+  PlusCircle,
+  Sparkles,
+  Binary,
+  HardDrive,
+  Radar,
+  Activity,
+  HelpCircle,
+  BookMarked,
+  GripVertical,
+  GripHorizontal,
+  PanelLeft,
+  Columns2,
+  Rows2,
+  PanelBottom,
+  Maximize2,
+  Layout,
+  Search as SearchIcon,
+  Bot,
+  GitMerge,
+  Clock,
+  ChevronDown,
+  ChevronRight,
+  Trash2,
 } from 'lucide-react';
 
-import { initDuckDB, runQuery, createTable, getTableNames, exportTable, disconnectSource, isVssAvailable, isFtsAvailable, explainQuery } from './services/duckDbService';
+import { initDuckDB, runQuery, createTable, getTableNames, exportTable, disconnectSource, isVssAvailable, isFtsAvailable, explainQuery, splitSqlStatements, getTableSchema } from './services/duckDbService';
 import { initPyodide, transpileSql } from './services/pyodideService';
 import { 
   generateSnowflakeSql, 
@@ -53,7 +57,7 @@ import { HelpPage } from './components/HelpPage';
 import { SnippetList } from './components/SnippetList';
 import { SnippetManager } from './components/SnippetManager';
 import { GlobalSearch } from './components/GlobalSearch';
-import { AppMode, QueryResult, LogEntry, DataSource } from './types';
+import { AppMode, QueryResult, LogEntry, DataSource, HistoryEntry, ColumnInfo } from './types';
 // @ts-ignore
 import { format } from 'sql-formatter';
 
@@ -76,7 +80,7 @@ export default function App() {
   const [nlPrompt, setNlPrompt] = useState('');
   const [queryResult, setQueryResult] = useState<QueryResult | null>(null);
   
-  const [resultsTab, setResultsTab] = useState<'results' | 'tables' | 'logs'>('results');
+  const [resultsTab, setResultsTab] = useState<'results' | 'tables' | 'logs' | 'history'>('results');
   const [targetDialect, setTargetDialect] = useState<'tsql' | 'postgres' | 'bigquery' | 'snowflake'>('tsql');
   
   // System Status
@@ -133,6 +137,45 @@ export default function App() {
 
   const refreshSnippets = () => {
     try { setSnippets(JSON.parse(localStorage.getItem('context7_snippets') || '[]')); } catch { setSnippets([]); }
+  };
+
+  // Query history
+  const [queryHistory, setQueryHistory] = useState<HistoryEntry[]>(() => {
+    try { return JSON.parse(localStorage.getItem('arcsql_history') || '[]'); } catch { return []; }
+  });
+
+  const pushHistory = (querySql: string, executionTime: number, statementCount: number) => {
+    const entry: HistoryEntry = {
+      id: Date.now().toString(),
+      sql: querySql,
+      timestamp: new Date().toLocaleTimeString(),
+      executionTime,
+      statementCount,
+    };
+    setQueryHistory(prev => {
+      const next = [entry, ...prev].slice(0, 50);
+      localStorage.setItem('arcsql_history', JSON.stringify(next));
+      return next;
+    });
+  };
+
+  // Schema expansion
+  const [tableSchemas, setTableSchemas] = useState<Record<string, ColumnInfo[]>>({});
+  const [expandedTables, setExpandedTables] = useState<Set<string>>(new Set());
+
+  const loadTableSchema = async (tableName: string) => {
+    if (tableSchemas[tableName]) return;
+    const cols = await getTableSchema(tableName);
+    setTableSchemas(prev => ({ ...prev, [tableName]: cols }));
+  };
+
+  const toggleTableExpand = (tableName: string) => {
+    setExpandedTables(prev => {
+      const next = new Set(prev);
+      if (next.has(tableName)) { next.delete(tableName); }
+      else { next.add(tableName); loadTableSchema(tableName); }
+      return next;
+    });
   };
 
   const [resizing, setResizing] = useState<'sidebar' | 'editor' | 'results' | null>(null);
@@ -306,62 +349,75 @@ export default function App() {
   const handleRunQuery = async () => {
     if (!duckDbReady) return;
     setIsProcessing(true);
-    
-    let currentSql = sql;
-    let attempt = 0;
-    const maxRetries = 2;
-    let success = false;
 
-    while (attempt <= maxRetries && !success) {
+    const stmts = splitSqlStatements(sql).filter(s => s.trim());
+    if (stmts.length === 0) { setIsProcessing(false); return; }
+
+    const isMulti = stmts.length > 1;
+    if (isMulti) addLog('info', `Executing ${stmts.length} statements in DuckDB...`);
+
+    let lastResult: QueryResult | null = null;
+    let successCount = 0;
+    let totalTime = 0;
+
+    for (let si = 0; si < stmts.length; si++) {
+      let currentSql = stmts[si];
+      let attempt = 0;
+      const maxRetries = isMulti ? 0 : 2;
+      let stmtDone = false;
+
+      while (attempt <= maxRetries && !stmtDone) {
         const isRetry = attempt > 0;
-        addLog(isRetry ? 'warning' : 'info', 
-            isRetry 
-            ? `Retry attempt ${attempt}/${maxRetries} executing in DuckDB...` 
-            : 'Executing query in DuckDB...'
-        );
-        
+        if (!isMulti) addLog(isRetry ? 'warning' : 'info', isRetry ? `Retry ${attempt}/${maxRetries}...` : 'Executing query in DuckDB...');
+
         let runnableSql = currentSql;
         if (pyodideReady) {
-            try {
-                const trans = await transpileSql(currentSql, 'snowflake'); 
-                if (trans.sql) runnableSql = trans.sql;
-            } catch (e) {
-                // If transpilation fails, execution might still work if basic SQL, or fail and trigger auto-fix
-            }
+          try {
+            const trans = await transpileSql(currentSql, 'snowflake');
+            if (trans.sql) runnableSql = trans.sql;
+          } catch (e) {}
         }
 
         const res = await runQuery(runnableSql);
-        
+
         if (!res.error) {
-            setQueryResult(res);
-            addLog('success', `Query executed successfully: ${res.rows.length} rows.`);
-            if (isRetry) {
-                setSql(currentSql);
-                addLog('success', 'Context7 Agent: Automatically fixed SQL syntax.');
-            }
-            success = true;
+          addLog('success', isMulti
+            ? `[${si + 1}/${stmts.length}] ${res.rows.length} rows (${(res.executionTime || 0).toFixed(0)}ms)`
+            : `Query executed: ${res.rows.length} rows.`);
+          if (isRetry) { setSql(currentSql); addLog('success', 'Agent: Fixed SQL syntax.'); }
+          lastResult = res;
+          successCount++;
+          totalTime += res.executionTime || 0;
+          stmtDone = true;
         } else {
-            if (attempt < maxRetries) {
-                addLog('error', `Execution Error: ${res.error}`);
-                addLog('info', 'Context7 Agent: Analyzing error and attempting fix...');
-                
-                try {
-                    await new Promise(r => setTimeout(r, 500 * attempt));
-                    const fixedSql = await fixSqlError(currentSql, res.error, tables);
-                    currentSql = formatSql(fixedSql);
-                    setSql(currentSql);
-                } catch (e) {
-                    addLog('error', 'Context7 Agent: Could not generate a fix.');
-                    setQueryResult(res); 
-                    break;
-                }
-            } else {
-                setQueryResult(res);
-                addLog('error', `Final execution failed after ${maxRetries} retries: ${res.error}`);
+          if (attempt < maxRetries) {
+            addLog('error', `Error: ${res.error}`);
+            addLog('info', 'Agent: Analyzing error...');
+            try {
+              await new Promise(r => setTimeout(r, 500 * attempt));
+              const fixedSql = await fixSqlError(currentSql, res.error, tables);
+              currentSql = formatSql(fixedSql);
+              setSql(currentSql);
+            } catch (e) {
+              addLog('error', 'Agent: Could not fix.');
+              lastResult = res;
+              stmtDone = true;
             }
+          } else {
+            addLog('error', isMulti ? `[${si + 1}/${stmts.length}] Error: ${res.error}` : `Failed: ${res.error}`);
+            lastResult = res;
+            stmtDone = true;
+          }
         }
         attempt++;
+      }
     }
+
+    if (lastResult) {
+      setQueryResult(lastResult);
+      if (!lastResult.error) pushHistory(sql, totalTime, stmts.length);
+    }
+    if (isMulti) addLog('info', `Done: ${successCount}/${stmts.length} statements succeeded.`);
 
     setIsProcessing(false);
   };
@@ -845,12 +901,19 @@ export default function App() {
                                     <Database className="w-3.5 h-3.5" />
                                     Tables
                                 </button>
-                                <button 
+                                <button
                                     onClick={() => setResultsTab('logs')}
                                     className={`px-4 py-2 text-xs font-bold uppercase tracking-wider flex items-center gap-2 border-b-2 transition-all ${resultsTab === 'logs' ? 'border-omop-magenta text-omop-magenta' : 'border-transparent text-martian-muted hover:text-white'}`}
                                 >
                                     <Terminal className="w-3.5 h-3.5" />
                                     Logs
+                                </button>
+                                <button
+                                    onClick={() => setResultsTab('history')}
+                                    className={`px-4 py-2 text-xs font-bold uppercase tracking-wider flex items-center gap-2 border-b-2 transition-all ${resultsTab === 'history' ? 'border-omop-cyan text-omop-cyan' : 'border-transparent text-martian-muted hover:text-white'}`}
+                                >
+                                    <Clock className="w-3.5 h-3.5" />
+                                    History {queryHistory.length > 0 && <span className="text-[9px] bg-omop-cyan/20 text-omop-cyan px-1 rounded">{queryHistory.length}</span>}
                                 </button>
                             </div>
 
@@ -865,7 +928,7 @@ export default function App() {
                                     <div className="flex-1 flex flex-col p-4 overflow-hidden">
                                         <div className="flex items-center justify-between mb-4">
                                             <h3 className="text-xs font-bold text-martian-muted uppercase tracking-wider">Tables & Sources</h3>
-                                            <button 
+                                            <button
                                                 onClick={() => setIsDataSourceManagerOpen(true)}
                                                 className="flex items-center gap-1.5 px-2 py-1 bg-martian-primary/10 hover:bg-martian-primary/20 text-martian-primary border border-martian-primary/30 rounded text-[10px] font-bold transition-all"
                                             >
@@ -877,26 +940,60 @@ export default function App() {
                                             {tables.length === 0 && <span className="text-xs text-martian-muted italic">No tables loaded.</span>}
                                             {tables.map(t => {
                                                 const isRemote = dataSources.some(ds => ds.name === t);
+                                                const isExpanded = expandedTables.has(t);
+                                                const schema = tableSchemas[t];
                                                 return (
-                                                    <div key={t} className="flex items-center justify-between gap-3 text-sm text-martian-text/90 px-3 py-2 rounded-lg bg-martian-surface/30 border border-martian-border/50 hover:border-martian-primary/50 cursor-pointer group transition-all">
-                                                        <div className="flex items-center gap-3 overflow-hidden">
-                                                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${isRemote ? 'bg-omop-amber/10 text-omop-amber' : 'bg-omop-slate/10 text-omop-slate'}`}>
-                                                                {isRemote ? <Globe className="w-4 h-4" /> : <Table className="w-4 h-4" />}
+                                                    <div key={t} className="rounded-lg border border-martian-border/50 overflow-hidden">
+                                                        <div
+                                                            className="flex items-center justify-between gap-3 text-sm text-martian-text/90 px-3 py-2 bg-martian-surface/30 hover:border-martian-primary/50 cursor-pointer group transition-all"
+                                                            onClick={() => toggleTableExpand(t)}
+                                                        >
+                                                            <div className="flex items-center gap-2 overflow-hidden">
+                                                                <span className="text-martian-muted/60 shrink-0">
+                                                                    {isExpanded ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+                                                                </span>
+                                                                <div className={`w-7 h-7 rounded-md flex items-center justify-center shrink-0 ${isRemote ? 'bg-omop-amber/10 text-omop-amber' : 'bg-omop-slate/10 text-omop-slate'}`}>
+                                                                    {isRemote ? <Globe className="w-3.5 h-3.5" /> : <Table className="w-3.5 h-3.5" />}
+                                                                </div>
+                                                                <div className="flex flex-col min-w-0">
+                                                                    <span className="font-medium truncate text-sm">{t}</span>
+                                                                    <span className="text-[10px] text-martian-muted uppercase tracking-tight">
+                                                                        {isRemote ? 'Remote' : 'Local'}{schema ? ` · ${schema.length} cols` : ''}
+                                                                    </span>
+                                                                </div>
                                                             </div>
-                                                            <div className="flex flex-col min-w-0">
-                                                                <span className="font-medium truncate">{t}</span>
-                                                                <span className="text-[10px] text-martian-muted uppercase tracking-tight">{isRemote ? 'Remote Source' : 'Local Table'}</span>
-                                                            </div>
-                                                        </div>
-                                                        <div className="flex items-center gap-1">
-                                                            <button 
+                                                            <button
                                                                 onClick={(e) => { e.stopPropagation(); handleExport(t); }}
-                                                                className="p-1.5 text-martian-muted hover:text-white hover:bg-martian-subtle rounded transition-all"
+                                                                className="p-1.5 text-martian-muted hover:text-white hover:bg-martian-subtle rounded transition-all shrink-0"
                                                                 title="Export to Parquet"
                                                             >
                                                                 <HardDrive className="w-3.5 h-3.5" />
                                                             </button>
                                                         </div>
+                                                        {isExpanded && (
+                                                            <div className="bg-black/20 border-t border-martian-border/30">
+                                                                {!schema && (
+                                                                    <div className="flex items-center gap-2 px-4 py-2 text-[10px] text-martian-muted">
+                                                                        <Loader2 className="w-3 h-3 animate-spin" /> Loading schema...
+                                                                    </div>
+                                                                )}
+                                                                {schema && schema.length === 0 && (
+                                                                    <div className="px-4 py-2 text-[10px] text-martian-muted italic">No columns found.</div>
+                                                                )}
+                                                                {schema && schema.map(col => (
+                                                                    <div key={col.name} className="flex items-center justify-between px-4 py-1 hover:bg-martian-surface/20 group/col">
+                                                                        <div className="flex items-center gap-2">
+                                                                            {col.pk > 0 && <span className="text-[8px] text-omop-amber font-bold uppercase">PK</span>}
+                                                                            <span className="text-[11px] font-mono text-martian-text/90">{col.name}</span>
+                                                                        </div>
+                                                                        <div className="flex items-center gap-2">
+                                                                            {col.notnull > 0 && <span className="text-[8px] text-martian-muted/60">NOT NULL</span>}
+                                                                            <span className="text-[10px] font-mono text-omop-cyan/70">{col.type}</span>
+                                                                        </div>
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        )}
                                                     </div>
                                                 );
                                             })}
@@ -923,6 +1020,52 @@ export default function App() {
                                                 </div>
                                             ))}
                                             <div ref={logsEndRef} />
+                                        </div>
+                                    </div>
+                                )}
+
+                                {resultsTab === 'history' && (
+                                    <div className="flex-1 flex flex-col overflow-hidden">
+                                        <div className="flex items-center justify-between px-4 py-2 border-b border-martian-border/50 shrink-0">
+                                            <span className="text-[10px] font-bold text-martian-muted uppercase tracking-wider">
+                                                Last {queryHistory.length} queries
+                                            </span>
+                                            {queryHistory.length > 0 && (
+                                                <button
+                                                    onClick={() => { setQueryHistory([]); localStorage.removeItem('arcsql_history'); }}
+                                                    className="flex items-center gap-1 text-[10px] text-martian-muted hover:text-red-400 transition-colors"
+                                                >
+                                                    <Trash2 className="w-3 h-3" /> Clear
+                                                </button>
+                                            )}
+                                        </div>
+                                        <div className="flex-1 overflow-y-auto">
+                                            {queryHistory.length === 0 && (
+                                                <div className="p-8 text-center text-martian-muted text-xs opacity-60">
+                                                    No queries yet. Run a query to start building history.
+                                                </div>
+                                            )}
+                                            {queryHistory.map(h => (
+                                                <div
+                                                    key={h.id}
+                                                    className="border-b border-martian-border/30 px-4 py-3 hover:bg-martian-surface/30 group cursor-pointer transition-colors"
+                                                    onClick={() => { setSql(h.sql); setResultsTab('results'); }}
+                                                >
+                                                    <div className="flex items-center justify-between mb-1.5">
+                                                        <span className="text-[10px] font-mono text-martian-muted">{h.timestamp}</span>
+                                                        <div className="flex items-center gap-2 text-[10px] text-martian-muted">
+                                                            {h.statementCount > 1 && <span className="bg-omop-amber/20 text-omop-amber px-1 rounded">{h.statementCount} stmts</span>}
+                                                            <span>{h.executionTime.toFixed(0)}ms</span>
+                                                        </div>
+                                                    </div>
+                                                    <pre className="text-[11px] font-mono text-martian-text/80 line-clamp-2 whitespace-pre-wrap break-all leading-relaxed">
+                                                        {h.sql.trim().slice(0, 120)}{h.sql.trim().length > 120 ? '…' : ''}
+                                                    </pre>
+                                                    <span className="text-[10px] text-omop-cyan opacity-0 group-hover:opacity-100 transition-opacity mt-1 inline-block">
+                                                        Click to load →
+                                                    </span>
+                                                </div>
+                                            ))}
                                         </div>
                                     </div>
                                 )}

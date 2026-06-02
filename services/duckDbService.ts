@@ -1,6 +1,58 @@
 import * as duckdb from '@duckdb/duckdb-wasm';
-import { QueryResult } from '../types';
+import { QueryResult, ColumnInfo } from '../types';
 import { getSupabaseClient } from './supabaseService.js';
+
+export const splitSqlStatements = (sql: string): string[] => {
+  const stmts: string[] = [];
+  let current = '';
+  let inString = false;
+  let stringChar = '';
+  let i = 0;
+
+  while (i < sql.length) {
+    const ch = sql[i];
+    if (!inString) {
+      if (ch === '-' && sql[i + 1] === '-') {
+        while (i < sql.length && sql[i] !== '\n') i++;
+        continue;
+      }
+      if (ch === '/' && sql[i + 1] === '*') {
+        i += 2;
+        while (i < sql.length - 1 && !(sql[i] === '*' && sql[i + 1] === '/')) i++;
+        i += 2;
+        continue;
+      }
+      if (ch === "'" || ch === '"') { inString = true; stringChar = ch; }
+      if (ch === ';') {
+        const trimmed = current.trim();
+        if (trimmed) stmts.push(trimmed);
+        current = '';
+        i++;
+        continue;
+      }
+    } else {
+      if (ch === stringChar) {
+        if (sql[i + 1] === stringChar) { current += ch; i++; }
+        else inString = false;
+      }
+    }
+    current += ch;
+    i++;
+  }
+  const trimmed = current.trim();
+  if (trimmed) stmts.push(trimmed);
+  return stmts;
+};
+
+export const getTableSchema = async (tableName: string): Promise<ColumnInfo[]> => {
+  if (!conn) return [];
+  try {
+    const res = await conn.query(`PRAGMA table_info('${tableName.replace(/'/g, "''")}')`);
+    return res.toArray().map(r => r.toJSON()) as ColumnInfo[];
+  } catch (e) {
+    return [];
+  }
+};
 
 let db: duckdb.AsyncDuckDB | null = null;
 let conn: duckdb.AsyncDuckDBConnection | null = null;

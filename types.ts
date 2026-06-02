@@ -47,6 +47,21 @@ export interface MlRequest {
   operation: 'one_hot' | 'label' | 'min_max_scale' | 'z_score_scale';
 }
 
+export interface HistoryEntry {
+  id: string;
+  sql: string;
+  timestamp: string;
+  executionTime: number;
+  statementCount: number;
+}
+
+export interface ColumnInfo {
+  name: string;
+  type: string;
+  notnull: number;
+  pk: number;
+}
+
 // Minimal type for Pyodide
 export interface PyodideInterface {
   loadPackage: (packages: string | string[]) => Promise<void>;
