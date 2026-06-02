@@ -1,64 +1,56 @@
+// Must be first — overrides any shell NODE_ENV so imports initialise correctly
+process.env.NODE_ENV = "development";
+
 import express from "express";
 import path from "path";
 import { fileURLToPath } from "url";
-import { createServer as createViteServer } from "vite";
-import * as geminiService from "./services/geminiImplementation.js";
+import { readFileSync } from "fs";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-async function startServer() {
+// Load .env.local before the Gemini SDK initialises
+try {
+  const envFile = readFileSync(path.join(__dirname, ".env.local"), "utf-8");
+  for (const line of envFile.split("\n")) {
+    const eqIdx = line.indexOf("=");
+    if (eqIdx > 0) {
+      const key = line.slice(0, eqIdx).trim();
+      const val = line.slice(eqIdx + 1).trim();
+      if (key && !process.env[key]) process.env[key] = val;
+    }
+  }
+} catch { /* no .env.local */ }
+
+async function startApiServer() {
+  const geminiService = await import("./services/geminiImplementation.js");
+
   const app = express();
-  const PORT = 3000;
+  const PORT = parseInt(process.env.API_PORT || "4001");
 
   app.use(express.json());
 
-  const ALLOWED_GEMINI_FUNCTIONS = new Set([
-    'generateSnowflakeSql',
-    'optimizeSnowflakeSql',
-    'generateMockData',
-    'agentChat',
-    'parseMlRequest',
-    'generateEncodingSql',
-    'generateVectorSql',
-    'fixSqlError',
+  const ALLOWED = new Set([
+    "generateSnowflakeSql", "optimizeSnowflakeSql", "generateMockData",
+    "agentChat", "parseMlRequest", "generateEncodingSql",
+    "generateVectorSql", "fixSqlError",
   ]);
 
-  // API Route for Gemini
   app.post("/api/gemini", async (req, res) => {
     const { functionName, args } = req.body;
-
     try {
-      if (!ALLOWED_GEMINI_FUNCTIONS.has(functionName)) {
-        return res.status(400).json({ error: `Function ${functionName} not found` });
-      }
-
+      if (!ALLOWED.has(functionName))
+        return res.status(400).json({ error: `Unknown function: ${functionName}` });
       const result = await (geminiService as any)[functionName](...args);
       res.json(result);
     } catch (error) {
-      console.error(`Error in ${functionName}:`, error);
+      console.error(`[gemini] ${functionName}:`, error);
       res.status(500).json({ error: error instanceof Error ? error.message : String(error) });
     }
   });
 
-  // Vite middleware for development
-  if (process.env.NODE_ENV !== "production") {
-    const vite = await createViteServer({
-      server: { middlewareMode: true },
-      appType: "spa",
-    });
-    app.use(vite.middlewares);
-  } else {
-    const distPath = path.join(process.cwd(), "dist");
-    app.use(express.static(distPath));
-    app.get("*", (req, res) => {
-      res.sendFile(path.join(distPath, "index.html"));
-    });
-  }
-
-  app.listen(PORT, "0.0.0.0", () => {
-    console.log(`Server running on http://localhost:${PORT}`);
-  });
+  app.listen(PORT, "0.0.0.0", () =>
+    console.log(`  API server  http://localhost:${PORT}`)
+  );
 }
 
-startServer();
+startApiServer().catch(console.error);
