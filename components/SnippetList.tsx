@@ -30,15 +30,15 @@ export const SnippetList: React.FC<SnippetListProps> = ({ snippets, onLoadSql, o
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-martian-text truncate">{snippet.name}</span>
             <div className="flex items-center gap-1">
-                <button 
+                <button
                     onClick={() => copyToClipboard(snippet.sql, snippet.id)}
                     className="p-1 hover:bg-martian-surface rounded text-martian-muted hover:text-white"
                 >
-                    {copiedId === snippet.id ? <Check className="w-3 h-3 text-green-400" /> : <Copy className="w-3 h-3" />}
+                    {copiedId === snippet.id ? <Check className="w-3 h-3 text-status-success" /> : <Copy className="w-3 h-3" />}
                 </button>
-                <button 
+                <button
                     onClick={() => onDelete(snippet.id)}
-                    className="p-1 hover:bg-red-900/30 rounded text-martian-muted hover:text-red-400"
+                    className="p-1 hover:bg-status-error/20 rounded text-martian-muted hover:text-status-error"
                 >
                     <Trash2 className="w-3 h-3" />
                 </button>

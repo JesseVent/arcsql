@@ -121,16 +121,16 @@ export const SnippetManager: React.FC<SnippetManagerProps> = ({ isOpen, onClose,
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-1 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <button 
+                                    <button
                                         onClick={() => copyToClipboard(snippet.sql, snippet.id)}
                                         className="p-1.5 hover:bg-martian-surface rounded text-martian-muted hover:text-white"
                                         title="Copy to Clipboard"
                                     >
-                                        {copiedId === snippet.id ? <Check className="w-3.5 h-3.5 text-green-400" /> : <Copy className="w-3.5 h-3.5" />}
+                                        {copiedId === snippet.id ? <Check className="w-3.5 h-3.5 text-status-success" /> : <Copy className="w-3.5 h-3.5" />}
                                     </button>
-                                    <button 
+                                    <button
                                         onClick={() => deleteSnippet(snippet.id)}
-                                        className="p-1.5 hover:bg-red-900/30 rounded text-martian-muted hover:text-red-400"
+                                        className="p-1.5 hover:bg-status-error/20 rounded text-martian-muted hover:text-status-error"
                                         title="Delete"
                                     >
                                         <Trash2 className="w-3.5 h-3.5" />

@@ -141,7 +141,7 @@ export const EvalManager: React.FC<EvalManagerProps> = ({ isOpen, onClose, onRun
           </div>
           <div className="flex items-center gap-3">
             {totalRan > 0 && (
-              <span className={`text-xs font-mono font-bold px-2 py-1 rounded ${passCount === totalRan ? 'bg-omop-emerald/20 text-omop-emerald' : 'bg-red-500/20 text-red-400'}`}>
+              <span className={`text-xs font-mono font-bold px-2 py-1 rounded ${passCount === totalRan ? 'bg-omop-emerald/20 text-omop-emerald' : 'bg-status-error/20 text-status-error'}`}>
                 {passCount}/{totalRan} passing
               </span>
             )}
@@ -273,7 +273,7 @@ export const EvalManager: React.FC<EvalManagerProps> = ({ isOpen, onClose, onRun
                         {run && (
                           run.passed
                             ? <CheckCircle2 className="w-4 h-4 text-omop-emerald shrink-0" />
-                            : <XCircle      className="w-4 h-4 text-red-400 shrink-0" />
+                            : <XCircle      className="w-4 h-4 text-status-error shrink-0" />
                         )}
                       </div>
                       <p className="text-[10px] text-martian-muted truncate mt-0.5">{ev.prompt}</p>
@@ -294,7 +294,7 @@ export const EvalManager: React.FC<EvalManagerProps> = ({ isOpen, onClose, onRun
                       </button>
                       <button
                         onClick={() => deleteEval(ev.id)}
-                        className="p-1.5 text-martian-muted hover:text-red-400 hover:bg-red-900/20 rounded-lg transition-all"
+                        className="p-1.5 text-martian-muted hover:text-status-error hover:bg-status-error/20 rounded-lg transition-all"
                         title="Delete eval"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
@@ -305,15 +305,15 @@ export const EvalManager: React.FC<EvalManagerProps> = ({ isOpen, onClose, onRun
                   {isExpanded && run && (
                     <div className="border-t border-martian-border/30 bg-black/20 px-4 py-3 space-y-3">
                       {run.error && (
-                        <p className="text-xs text-red-400 font-mono bg-red-900/20 px-3 py-2 rounded">{run.error}</p>
+                        <p className="text-xs text-status-error font-mono bg-status-error/20 px-3 py-2 rounded">{run.error}</p>
                       )}
                       <div className="space-y-1">
                         {run.assertions.map((a, i) => (
                           <div key={i} className="flex items-center gap-2 text-xs">
                             {a.passed
                               ? <CheckCircle2 className="w-3.5 h-3.5 text-omop-emerald shrink-0" />
-                              : <XCircle      className="w-3.5 h-3.5 text-red-400 shrink-0" />}
-                            <span className={a.passed ? 'text-martian-text/80' : 'text-red-300'}>{a.label}</span>
+                              : <XCircle      className="w-3.5 h-3.5 text-status-error shrink-0" />}
+                            <span className={a.passed ? 'text-martian-text/80' : 'text-status-error/80'}>{a.label}</span>
                             {a.actual != null && (
                               <span className="text-martian-muted font-mono text-[10px] ml-auto truncate max-w-[140px]">{String(a.actual)}</span>
                             )}

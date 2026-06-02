@@ -80,30 +80,30 @@ export const ResultsViewer: React.FC<ResultsViewerProps> = ({ result }) => {
 
     return (
       <div className="h-full flex flex-col items-center justify-center p-8 animate-in fade-in zoom-in-95 duration-200">
-        <div className="flex items-center justify-center w-12 h-12 rounded-full bg-red-500/10 border border-red-500/20 text-red-400 mb-4 shadow-[0_0_20px_rgba(220,38,38,0.15)]">
+        <div className="flex items-center justify-center w-12 h-12 rounded-full bg-status-error/10 border border-status-error/20 text-status-error mb-4 shadow-[0_0_20px_rgba(255,100,103,0.15)]">
             <FileWarning className="w-6 h-6" />
         </div>
-        
+
         <div className="text-center mb-6">
-            <h3 className="text-lg font-bold text-red-100">{title}</h3>
+            <h3 className="text-lg font-bold text-status-error/90">{title}</h3>
             {lineNumber && (
-                <div className="inline-flex items-center gap-1.5 mt-2 px-2 py-0.5 rounded text-xs font-mono bg-red-950/40 border border-red-900/50 text-red-300">
+                <div className="inline-flex items-center gap-1.5 mt-2 px-2 py-0.5 rounded text-xs font-mono bg-status-error/10 border border-status-error/20 text-status-error/80">
                     <span className="opacity-50">LOCATION:</span>
                     <span className="font-bold">LINE {lineNumber}</span>
                 </div>
             )}
         </div>
 
-        <div className="w-full max-w-2xl bg-black/40 border border-red-500/20 rounded-lg overflow-hidden backdrop-blur-sm">
-            <div className="bg-red-950/20 px-4 py-2 border-b border-red-500/10 flex items-center gap-2">
+        <div className="w-full max-w-2xl bg-black/40 border border-status-error/20 rounded-lg overflow-hidden backdrop-blur-sm">
+            <div className="bg-status-error/10 px-4 py-2 border-b border-status-error/10 flex items-center gap-2">
                 <div className="flex gap-1.5">
-                    <div className="w-2.5 h-2.5 rounded-full bg-red-500/20"></div>
-                    <div className="w-2.5 h-2.5 rounded-full bg-yellow-500/20"></div>
+                    <div className="w-2.5 h-2.5 rounded-full bg-status-error/20"></div>
+                    <div className="w-2.5 h-2.5 rounded-full bg-status-warning/20"></div>
                 </div>
-                <span className="text-[10px] uppercase font-bold text-red-400/50 tracking-wider">Error Output</span>
+                <span className="text-[10px] uppercase font-bold text-status-error/50 tracking-wider">Error Output</span>
             </div>
             <div className="p-4 overflow-auto max-h-[200px]">
-                <pre className="font-mono text-sm text-red-200 break-words whitespace-pre-wrap leading-relaxed">
+                <pre className="font-mono text-sm text-status-error/80 break-words whitespace-pre-wrap leading-relaxed">
                     {result.error}
                 </pre>
             </div>

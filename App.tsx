@@ -142,7 +142,11 @@ export default function App() {
   const [resultsRatio, setResultsRatio] = useState(0.65); // Percentage of height for Results vs Logs
   
   const [showSidebar, setShowSidebar] = useState(true);
-  const [layoutMode, setLayoutMode] = useState<'horizontal' | 'vertical'>('horizontal'); // Split direction
+  const [layoutMode, setLayoutMode] = useState<'horizontal' | 'vertical' | null>('horizontal'); // Split direction
+  const effectiveLayoutMode = layoutMode ?? 'horizontal';
+  const toggleLayoutMode = (mode: 'horizontal' | 'vertical') => {
+    setLayoutMode(prev => prev === mode ? null : mode);
+  };
   const [showResultsPane, setShowResultsPane] = useState(true);
   const [showSnippets, setShowSnippets] = useState(false);
   const [snippets, setSnippets] = useState<any[]>(() => {
@@ -258,7 +262,7 @@ export default function App() {
         } else if (resizing === 'editor') {
              if (editorContainerRef.current) {
                  const rect = editorContainerRef.current.getBoundingClientRect();
-                 if (layoutMode === 'horizontal') {
+                 if (effectiveLayoutMode === 'horizontal') {
                      const offsetX = e.clientX - rect.left;
                      const newRatio = Math.max(0.2, Math.min(0.8, offsetX / rect.width));
                      setEditorRatio(newRatio);
@@ -290,7 +294,7 @@ export default function App() {
     // UI Feedback while dragging
     document.body.style.userSelect = 'none';
     if (resizing === 'sidebar') document.body.style.cursor = 'col-resize';
-    else if (resizing === 'editor') document.body.style.cursor = layoutMode === 'horizontal' ? 'col-resize' : 'row-resize';
+    else if (resizing === 'editor') document.body.style.cursor = effectiveLayoutMode === 'horizontal' ? 'col-resize' : 'row-resize';
     else if (resizing === 'results') document.body.style.cursor = 'row-resize';
 
     return () => {
@@ -855,15 +859,15 @@ export default function App() {
                      <PanelLeft className="w-4 h-4" />
                  </button>
                  <div className="w-px h-4 bg-martian-border/50 mx-1"></div>
-                 <button 
-                    onClick={() => setLayoutMode('horizontal')}
+                 <button
+                    onClick={() => toggleLayoutMode('horizontal')}
                     className={`p-1.5 rounded transition-all ${layoutMode === 'horizontal' ? 'bg-martian-subtle text-white' : 'text-martian-muted hover:text-white'}`}
                     title="Side-by-Side View"
                  >
                      <Columns2 className="w-4 h-4" />
                  </button>
-                 <button 
-                    onClick={() => setLayoutMode('vertical')}
+                 <button
+                    onClick={() => toggleLayoutMode('vertical')}
                     className={`p-1.5 rounded transition-all ${layoutMode === 'vertical' ? 'bg-martian-subtle text-white' : 'text-martian-muted hover:text-white'}`}
                     title="Stacked View"
                  >
@@ -910,12 +914,12 @@ export default function App() {
                 onClick={() => setIsDataSourceManagerOpen(true)}
                 className={`flex items-center gap-1.5 px-2 py-1 rounded-md border text-[11px] font-semibold transition-all ${
                     isSupabaseDbConfigured ? (
-                        supabaseLoggedInUser ? 'bg-green-500/10 border-green-500/30 text-green-400 hover:bg-green-500/20' : 'bg-martian-bg border-green-600/30 text-green-500 hover:bg-green-600/10'
+                        supabaseLoggedInUser ? 'bg-status-success/10 border-status-success/30 text-status-success hover:bg-status-success/20' : 'bg-martian-bg border-status-success/30 text-status-success hover:bg-status-success/10'
                     ) : 'bg-martian-bg border-martian-border text-martian-muted hover:text-white hover:border-martian-primary/40'
                 }`}
                 title="Manage Live Supabase Connection & Sessions"
             >
-                <Database className="w-3.5 h-3.5 text-green-500 shrink-0 animate-pulse" />
+                <Database className="w-3.5 h-3.5 text-status-success shrink-0 animate-pulse" />
                 <span>
                     {isSupabaseDbConfigured ? (
                         supabaseLoggedInUser ? `Supabase: ${supabaseLoggedInUser.email}` : 'Supabase: Active'
@@ -1007,17 +1011,17 @@ export default function App() {
         {/* Workspace */}
         <main className="flex-1 flex flex-col min-w-0" ref={editorContainerRef}>
             {/* Resizable Editor/Results Split */}
-                <div className={`flex-1 flex overflow-hidden ${layoutMode === 'vertical' ? 'flex-col' : 'flex-row'}`}>
+                <div className={`flex-1 flex overflow-hidden ${effectiveLayoutMode === 'vertical' ? 'flex-col' : 'flex-row'}`}>
                     
                     {/* Editor Pane */}
                     <div 
-                        style={{ 
-                            width: layoutMode === 'horizontal' ? (showResultsPane ? `${editorRatio * 100}%` : '100%') : '100%',
-                            height: layoutMode === 'vertical' ? (showResultsPane ? `${editorRatio * 100}%` : '100%') : '100%',
-                            minWidth: showResultsPane && layoutMode === 'horizontal' ? '100px' : undefined,
-                            minHeight: showResultsPane && layoutMode === 'vertical' ? '100px' : undefined,
-                        }} 
-                        className={`flex flex-col flex-shrink-0 border-martian-border transition-none ${layoutMode === 'horizontal' && showResultsPane ? 'border-r' : ''} ${layoutMode === 'vertical' && showResultsPane ? 'border-b' : ''}`}
+                        style={{
+                            width: effectiveLayoutMode === 'horizontal' ? (showResultsPane ? `${editorRatio * 100}%` : '100%') : '100%',
+                            height: effectiveLayoutMode === 'vertical' ? (showResultsPane ? `${editorRatio * 100}%` : '100%') : '100%',
+                            minWidth: showResultsPane && effectiveLayoutMode === 'horizontal' ? '100px' : undefined,
+                            minHeight: showResultsPane && effectiveLayoutMode === 'vertical' ? '100px' : undefined,
+                        }}
+                        className={`flex flex-col flex-shrink-0 border-martian-border transition-none ${effectiveLayoutMode === 'horizontal' && showResultsPane ? 'border-r' : ''} ${effectiveLayoutMode === 'vertical' && showResultsPane ? 'border-b' : ''}`}
                     >
                         <div className="flex-1 h-full flex flex-col">
                             <div className="flex-1">
@@ -1028,11 +1032,11 @@ export default function App() {
 
                     {/* Splitter */}
                     {showResultsPane && (
-                        <div 
-                            className={`${layoutMode === 'horizontal' ? 'w-1 cursor-col-resize' : 'h-1 cursor-row-resize'} hover:bg-martian-primary bg-martian-border/20 transition-colors z-10 flex justify-center items-center group/resizer flex-shrink-0`}
+                        <div
+                            className={`${effectiveLayoutMode === 'horizontal' ? 'w-1 cursor-col-resize' : 'h-1 cursor-row-resize'} hover:bg-martian-primary bg-martian-border/20 transition-colors z-10 flex justify-center items-center group/resizer flex-shrink-0`}
                             onMouseDown={() => setResizing('editor')}
                         >
-                             <div className={`${layoutMode === 'horizontal' ? 'h-8 w-0.5' : 'w-8 h-0.5'} bg-martian-muted/50 group-hover/resizer:bg-white rounded-full transition-colors`}></div>
+                             <div className={`${effectiveLayoutMode === 'horizontal' ? 'h-8 w-0.5' : 'w-8 h-0.5'} bg-martian-muted/50 group-hover/resizer:bg-white rounded-full transition-colors`}></div>
                         </div>
                     )}
 
@@ -1162,9 +1166,9 @@ export default function App() {
                                                 <div key={i} className="flex gap-2">
                                                     <span className="text-martian-border shrink-0">[{log.timestamp}]</span>
                                                     <span className={`
-                                                        ${log.type === 'error' ? 'text-red-400' : ''}
-                                                        ${log.type === 'success' ? 'text-green-400' : ''}
-                                                        ${log.type === 'warning' ? 'text-yellow-400' : ''}
+                                                        ${log.type === 'error' ? 'text-status-error' : ''}
+                                                        ${log.type === 'success' ? 'text-status-success' : ''}
+                                                        ${log.type === 'warning' ? 'text-status-warning' : ''}
                                                         ${log.type === 'info' ? 'text-martian-muted' : ''}
                                                     `}>
                                                         {log.type === 'success' && '✓ '}
@@ -1187,7 +1191,7 @@ export default function App() {
                                             {queryHistory.length > 0 && (
                                                 <button
                                                     onClick={() => { setQueryHistory([]); localStorage.removeItem('arcsql_history'); }}
-                                                    className="flex items-center gap-1 text-[10px] text-martian-muted hover:text-red-400 transition-colors"
+                                                    className="flex items-center gap-1 text-[10px] text-martian-muted hover:text-status-error transition-colors"
                                                 >
                                                     <Trash2 className="w-3 h-3" /> Clear
                                                 </button>
@@ -1373,7 +1377,7 @@ export default function App() {
                             <button
                                 onClick={handleRunQuery}
                                 disabled={isProcessing || !duckDbReady}
-                                className="bg-green-600 hover:bg-green-500 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-all active:scale-95 disabled:opacity-40 disabled:grayscale shadow-lg shadow-green-900/30"
+                                className="bg-status-success hover:brightness-110 text-black px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-all active:scale-95 disabled:opacity-40 disabled:grayscale shadow-lg shadow-status-success/20"
                                 title="Execute SQL in DuckDB"
                             >
                                 {isProcessing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4 fill-current" />}

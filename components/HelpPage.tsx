@@ -126,7 +126,7 @@ export const HelpPage: React.FC<HelpPageProps> = ({ isOpen, onClose }) => {
                             </div>
                         </div>
                         <div className="flex gap-3">
-                            <Database className="w-5 h-5 text-green-400 shrink-0" />
+                            <Database className="w-5 h-5 text-omop-emerald shrink-0" />
                             <div>
                                 <h4 className="font-bold text-sm text-martian-text">Supabase Dynamic Mounting</h4>
                                 <p className="text-xs text-martian-muted leading-relaxed">

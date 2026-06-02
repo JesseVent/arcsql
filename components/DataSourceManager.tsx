@@ -324,9 +324,9 @@ export const DataSourceManager: React.FC<DataSourceManagerProps> = ({
             <Globe className="w-4 h-4" />
             Ad-hoc Data Mounts
           </button>
-          <button 
+          <button
             onClick={() => setActiveTab('supabase')}
-            className={`px-4 py-3 text-xs md:text-sm font-semibold border-b-2 transition-all flex items-center gap-2 ${activeTab === 'supabase' ? 'border-green-500 text-green-400 font-bold' : 'border-transparent text-martian-muted hover:text-green-400'}`}
+            className={`px-4 py-3 text-xs md:text-sm font-semibold border-b-2 transition-all flex items-center gap-2 ${activeTab === 'supabase' ? 'border-omop-emerald text-omop-emerald font-bold' : 'border-transparent text-martian-muted hover:text-omop-emerald'}`}
           >
             <Database className="w-4 h-4" />
             Supabase Auth Workspace
@@ -361,11 +361,11 @@ export const DataSourceManager: React.FC<DataSourceManagerProps> = ({
                   ].map((fmt) => {
                     const isSelected = type === fmt.id;
                     let activeClass = 'bg-martian-primary/20 border-martian-primary text-martian-primary font-bold';
-                    
+
                     if (fmt.id === 'duckdb' && isSelected) {
                         activeClass = 'bg-omop-amber/20 border-omop-amber text-omop-amber shadow-[0_0_10px_rgba(245,158,11,0.2)] font-bold';
                     } else if (fmt.id === 'supabase' && isSelected) {
-                        activeClass = 'bg-green-500/20 border-green-500 text-green-400 shadow-[0_0_10px_rgba(34,197,94,0.2)] font-bold';
+                        activeClass = 'bg-omop-emerald/20 border-omop-emerald text-omop-emerald shadow-[0_0_10px_rgba(5,223,114,0.2)] font-bold';
                     }
 
                     const inactiveClass = 'bg-martian-bg border-martian-border text-martian-muted hover:border-martian-text/50';
@@ -390,13 +390,13 @@ export const DataSourceManager: React.FC<DataSourceManagerProps> = ({
                   <div>
                     <label className="block text-xs font-medium text-martian-muted mb-1.5 flex items-center justify-between">
                       <span>Public REST API Project URL</span>
-                      <span className="text-[10px] text-green-400 capitalize bg-green-500/10 px-1.5 py-0.5 rounded">Anonymous Endpoint</span>
+                      <span className="text-[10px] text-omop-emerald capitalize bg-omop-emerald/10 px-1.5 py-0.5 rounded">Anonymous Endpoint</span>
                     </label>
                     <div className="relative">
                       <Link className="absolute left-3 top-2.5 w-4 h-4 text-martian-muted" />
-                      <input 
-                        type="text" 
-                        className="w-full bg-martian-bg border border-martian-border rounded-lg pl-9 pr-3 py-2 text-sm focus:outline-none focus:border-green-500 text-white"
+                      <input
+                        type="text"
+                        className="w-full bg-martian-bg border border-martian-border rounded-lg pl-9 pr-3 py-2 text-sm focus:outline-none focus:border-omop-emerald text-white"
                         placeholder="https://your-proj.supabase.co"
                         value={supabaseProjectUrl}
                         onChange={(e) => setSupabaseProjectUrl(e.target.value)}
@@ -406,9 +406,9 @@ export const DataSourceManager: React.FC<DataSourceManagerProps> = ({
 
                   <div>
                     <label className="block text-xs font-medium text-martian-muted mb-1.5">Supabase Table Name</label>
-                    <input 
-                      type="text" 
-                      className="w-full bg-martian-bg border border-martian-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-green-500 text-white"
+                    <input
+                      type="text"
+                      className="w-full bg-martian-bg border border-martian-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-omop-emerald text-white"
                       placeholder="e.g., users"
                       value={supabaseTableName}
                       onChange={(e) => {
@@ -424,13 +424,13 @@ export const DataSourceManager: React.FC<DataSourceManagerProps> = ({
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-green-400 mb-1.5 flex items-center gap-1">
+                    <label className="block text-xs font-semibold text-omop-emerald mb-1.5 flex items-center gap-1">
                       <KeyRound className="w-3.5 h-3.5" />
                       Supabase Public Anon Key
                     </label>
-                    <input 
-                      type="password" 
-                      className="w-full bg-martian-bg border border-green-500/30 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-green-500 text-white placeholder-martian-muted/50"
+                    <input
+                      type="password"
+                      className="w-full bg-martian-bg border border-omop-emerald/30 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-omop-emerald text-white placeholder-martian-muted/50"
                       placeholder="Enter API Key/Token..."
                       value={key}
                       onChange={(e) => setKey(e.target.value)}
@@ -472,22 +472,22 @@ export const DataSourceManager: React.FC<DataSourceManagerProps> = ({
               )}
 
               {error && (
-                <div className="p-3 bg-red-950/20 border border-red-900/50 rounded-lg text-xs text-red-400">
+                <div className="p-3 bg-status-error/10 border border-status-error/25 rounded-lg text-xs text-status-error">
                   {error}
                 </div>
               )}
 
               {successMsg && (
-                <div className="p-3 bg-green-500/10 border border-green-500/20 rounded-lg text-xs text-green-400 flex items-center gap-2">
+                <div className="p-3 bg-omop-emerald/10 border border-omop-emerald/20 rounded-lg text-xs text-omop-emerald flex items-center gap-2">
                   <CheckCircle2 className="w-4 h-4" />
                   {successMsg}
                 </div>
               )}
 
-              <button 
+              <button
                 onClick={handleConnect}
                 disabled={isLoading || !isFormValid()}
-                className={`w-full disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold py-2.5 rounded-lg flex items-center justify-center gap-2 transition-all mt-6 ${type === 'supabase' ? 'bg-green-600 hover:bg-green-500' : 'bg-martian-primary hover:bg-martian-primary/90'}`}
+                className={`w-full disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold py-2.5 rounded-lg flex items-center justify-center gap-2 transition-all mt-6 ${type === 'supabase' ? 'bg-omop-emerald hover:brightness-110' : 'bg-martian-primary hover:bg-martian-primary/90'}`}
               >
                 {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
                 Register Standalone Source
@@ -508,15 +508,15 @@ export const DataSourceManager: React.FC<DataSourceManagerProps> = ({
                     <div key={src.name} className="group bg-martian-bg border border-martian-border rounded-lg p-3 relative hover:border-martian-primary/40 transition-colors">
                       <div className="flex items-center justify-between mb-1">
                         <span className="font-bold text-sm text-white truncate max-w-[130px]">{src.name}</span>
-                        <span className={`text-[9px] font-semibold px-1.5 py-0.5 rounded capitalize bg-martian-surface tracking-wider ${src.type === 'duckdb' ? 'text-omop-amber' : src.type === 'supabase' ? 'text-green-400' : 'text-martian-muted'}`}>
+                        <span className={`text-[9px] font-semibold px-1.5 py-0.5 rounded capitalize bg-martian-surface tracking-wider ${src.type === 'duckdb' ? 'text-omop-amber' : src.type === 'supabase' ? 'text-omop-emerald' : 'text-martian-muted'}`}>
                           {src.type}
                         </span>
                       </div>
                       <div className="text-[10px] text-martian-muted truncate" title={src.url}>{src.url}</div>
-                      
-                      <button 
+
+                      <button
                         onClick={() => onRemoveSource(src.name)}
-                        className="absolute -top-2 -right-2 p-1 bg-red-900 border border-red-700 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-lg cursor-pointer"
+                        className="absolute -top-2 -right-2 p-1 bg-status-error/40 border border-status-error/60 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-lg cursor-pointer"
                       >
                         <Trash2 className="w-3 h-3" />
                       </button>
@@ -532,13 +532,13 @@ export const DataSourceManager: React.FC<DataSourceManagerProps> = ({
             
             {/* Alerts Feedback block */}
             {actionError && (
-              <div className="p-3 bg-red-950/20 border border-red-900/40 rounded-lg text-xs text-red-300 animate-in fade-in duration-200">
+              <div className="p-3 bg-status-error/10 border border-status-error/20 rounded-lg text-xs text-status-error/80 animate-in fade-in duration-200">
                 {actionError}
               </div>
             )}
             {actionSuccess && (
-              <div className="p-3 bg-green-950/20 border border-green-500/40 rounded-lg text-xs text-green-300 flex items-center gap-1.5 animate-in fade-in duration-200">
-                <CheckCircle2 className="w-4 h-4 text-green-400 shrink-0" />
+              <div className="p-3 bg-omop-emerald/10 border border-omop-emerald/20 rounded-lg text-xs text-omop-emerald flex items-center gap-1.5 animate-in fade-in duration-200">
+                <CheckCircle2 className="w-4 h-4 text-omop-emerald shrink-0" />
                 {actionSuccess}
               </div>
             )}
@@ -547,7 +547,7 @@ export const DataSourceManager: React.FC<DataSourceManagerProps> = ({
             {!configUrl || !configAnonKey || isConfiguringKeys ? (
               <div className="max-w-xl mx-auto w-full space-y-4 py-4 animate-in fade-in duration-200">
                 <div className="text-center mb-2">
-                  <KeyRound className="w-10 h-10 text-green-500 mx-auto mb-2" />
+                  <KeyRound className="w-10 h-10 text-omop-emerald mx-auto mb-2" />
                   <h3 className="text-lg font-bold text-white">Enter Supabase Project Credentials</h3>
                   <p className="text-xs text-martian-muted mt-1 max-w-sm mx-auto">
                     Configure your live Supabase parameters below. This activates the built-in Supabase Auth Client module client-side.
@@ -557,9 +557,9 @@ export const DataSourceManager: React.FC<DataSourceManagerProps> = ({
                 <div className="bg-martian-bg border border-martian-border rounded-xl p-5 space-y-4">
                   <div>
                     <label className="block text-xs font-semibold text-martian-muted mb-1.5 uppercase tracking-wider">Project URL</label>
-                    <input 
-                      type="text" 
-                      className="w-full bg-martian-surface border border-martian-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-green-500 text-white"
+                    <input
+                      type="text"
+                      className="w-full bg-martian-surface border border-martian-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-omop-emerald text-white"
                       placeholder="https://your-project-id.supabase.co"
                       value={configUrl}
                       onChange={(e) => setConfigUrl(e.target.value)}
@@ -568,9 +568,9 @@ export const DataSourceManager: React.FC<DataSourceManagerProps> = ({
 
                   <div>
                     <label className="block text-xs font-semibold text-martian-muted mb-1.5 uppercase tracking-wider">Client API Public Anon Key</label>
-                    <input 
-                      type="password" 
-                      className="w-full bg-martian-surface border border-martian-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-green-500 text-white"
+                    <input
+                      type="password"
+                      className="w-full bg-martian-surface border border-martian-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-omop-emerald text-white"
                       placeholder="Enter supabase public anon key..."
                       value={configAnonKey}
                       onChange={(e) => setConfigAnonKey(e.target.value)}
@@ -579,17 +579,17 @@ export const DataSourceManager: React.FC<DataSourceManagerProps> = ({
 
                   <div className="flex gap-2.5 pt-2">
                     {isConfiguringKeys && (
-                      <button 
+                      <button
                         onClick={() => setIsConfiguringKeys(false)}
                         className="flex-1 bg-martian-border/50 hover:bg-martian-border text-white text-xs font-bold py-2 px-4 rounded-lg transition-colors"
                       >
                         Cancel
                       </button>
                     )}
-                    <button 
+                    <button
                       onClick={handleSaveConfig}
                       disabled={actionLoading}
-                      className="flex-1 bg-green-600 hover:bg-green-500 disabled:opacity-50 text-white text-xs font-bold py-2 px-4 rounded-lg flex items-center justify-center gap-1.5 transition-colors"
+                      className="flex-1 bg-omop-emerald hover:brightness-110 disabled:opacity-50 text-white text-xs font-bold py-2 px-4 rounded-lg flex items-center justify-center gap-1.5 transition-colors"
                     >
                       {actionLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Settings className="w-3.5 h-3.5" />}
                       Initialize Supabase Client
@@ -606,11 +606,11 @@ export const DataSourceManager: React.FC<DataSourceManagerProps> = ({
                   {/* Project connection details card */}
                   <div className="bg-martian-bg border border-martian-border rounded-xl p-5 space-y-3">
                     <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-bold text-green-400 bg-green-500/10 px-2 py-0.5 rounded flex items-center gap-1 uppercase">
+                      <span className="text-[10px] font-bold text-omop-emerald bg-omop-emerald/10 px-2 py-0.5 rounded flex items-center gap-1 uppercase">
                         <ShieldCheck className="w-3 h-3" />
                         Client Configured
                       </span>
-                      <button 
+                      <button
                         onClick={() => setIsConfiguringKeys(true)}
                         className="text-[10px] text-martian-muted hover:text-white underline"
                       >
@@ -623,9 +623,9 @@ export const DataSourceManager: React.FC<DataSourceManagerProps> = ({
                       <div className="text-xs text-white truncate font-mono mt-0.5" title={configUrl}>{configUrl}</div>
                     </div>
 
-                    <button 
+                    <button
                       onClick={handleClearKeys}
-                      className="w-full bg-red-950/20 hover:bg-red-950/40 border border-red-900/50 text-red-400 text-[10px] font-bold py-1.5 rounded transition-all"
+                      className="w-full bg-status-error/10 hover:bg-status-error/20 border border-status-error/25 text-status-error text-[10px] font-bold py-1.5 rounded transition-all"
                     >
                       Reset Project Configuration
                     </button>
@@ -634,23 +634,23 @@ export const DataSourceManager: React.FC<DataSourceManagerProps> = ({
                   {/* Supabase authentication card */}
                   <div className="bg-martian-bg border border-martian-border rounded-xl p-5 space-y-4">
                     <h3 className="text-xs font-bold text-martian-muted uppercase tracking-wider flex items-center gap-1.5">
-                      <User className="w-4 h-4 text-green-400" />
+                      <User className="w-4 h-4 text-omop-emerald" />
                       Supabase user authentication
                     </h3>
 
                     {activeUser ? (
                       /* Authenticated User state */
                       <div className="space-y-3 pt-1 animate-in fade-in duration-200">
-                        <div className="p-3 bg-green-400/5 border border-green-500/10 rounded-lg">
+                        <div className="p-3 bg-omop-emerald/5 border border-omop-emerald/10 rounded-lg">
                           <div className="text-[10px] text-martian-muted uppercase font-bold">Logged In Identity</div>
                           <div className="text-sm font-semibold text-white truncate mt-0.5">{activeUser.email}</div>
-                          <div className="text-[10px] text-green-400/80 font-mono mt-1 select-all" title={activeUser.id}>ID: {activeUser.id.substring(0, 16)}...</div>
+                          <div className="text-[10px] text-omop-emerald/80 font-mono mt-1 select-all" title={activeUser.id}>ID: {activeUser.id.substring(0, 16)}...</div>
                         </div>
 
-                        <button 
+                        <button
                           onClick={handleSignOut}
                           disabled={actionLoading}
-                          className="w-full bg-martian-surface border border-martian-border hover:border-red-500/40 text-martian-muted hover:text-red-400 text-xs font-bold py-2 rounded-lg flex items-center justify-center gap-1.5 transition-all"
+                          className="w-full bg-martian-surface border border-martian-border hover:border-status-error/40 text-martian-muted hover:text-status-error text-xs font-bold py-2 rounded-lg flex items-center justify-center gap-1.5 transition-all"
                         >
                           {actionLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <LogOut className="w-3.5 h-3.5" />}
                           Sign out of Session
@@ -661,16 +661,16 @@ export const DataSourceManager: React.FC<DataSourceManagerProps> = ({
                       <div className="space-y-4 animate-in fade-in duration-200">
                         {/* Tab selectors */}
                         <div className="grid grid-cols-2 bg-martian-surface p-1 rounded-lg border border-martian-border text-center">
-                          <button 
+                          <button
                             onClick={() => setAuthTab('login')}
-                            className={`py-1 rounded text-xs font-bold transition-all ${authTab === 'login' ? 'bg-green-600 text-white shadow-sm' : 'text-martian-muted hover:text-white'}`}
+                            className={`py-1 rounded text-xs font-bold transition-all ${authTab === 'login' ? 'bg-omop-emerald text-white shadow-sm' : 'text-martian-muted hover:text-white'}`}
                           >
                             <LogIn className="w-3 h-3 inline mr-1" />
                             Log In
                           </button>
-                          <button 
+                          <button
                             onClick={() => setAuthTab('signup')}
-                            className={`py-1 rounded text-xs font-bold transition-all ${authTab === 'signup' ? 'bg-green-600 text-white shadow-sm' : 'text-martian-muted hover:text-white'}`}
+                            className={`py-1 rounded text-xs font-bold transition-all ${authTab === 'signup' ? 'bg-omop-emerald text-white shadow-sm' : 'text-martian-muted hover:text-white'}`}
                           >
                             <UserPlus className="w-3 h-3 inline mr-1" />
                             Sign Up
@@ -680,10 +680,10 @@ export const DataSourceManager: React.FC<DataSourceManagerProps> = ({
                         <form onSubmit={handleAuthSubmit} className="space-y-3">
                           <div>
                             <label className="block text-[10px] font-bold text-martian-muted mb-1 uppercase tracking-wider">Email address</label>
-                            <input 
-                              type="email" 
+                            <input
+                              type="email"
                               required
-                              className="w-full bg-martian-surface border border-martian-border rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:border-green-500 text-white"
+                              className="w-full bg-martian-surface border border-martian-border rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:border-omop-emerald text-white"
                               placeholder="e.g., mail@example.com"
                               value={authEmail}
                               onChange={(e) => setAuthEmail(e.target.value)}
@@ -691,20 +691,20 @@ export const DataSourceManager: React.FC<DataSourceManagerProps> = ({
                           </div>
                           <div>
                             <label className="block text-[10px] font-bold text-martian-muted mb-1 uppercase tracking-wider">Password</label>
-                            <input 
-                              type="password" 
+                            <input
+                              type="password"
                               required
-                              className="w-full bg-martian-surface border border-martian-border rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:border-green-500 text-white"
+                              className="w-full bg-martian-surface border border-martian-border rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:border-omop-emerald text-white"
                               placeholder="Enter password..."
                               value={authPassword}
                               onChange={(e) => setAuthPassword(e.target.value)}
                             />
                           </div>
 
-                          <button 
+                          <button
                             type="submit"
                             disabled={actionLoading}
-                            className="w-full bg-green-600 hover:bg-green-500 disabled:opacity-50 text-white font-bold text-xs py-2 rounded-lg flex items-center justify-center gap-1.5 transition-colors pt-2.5"
+                            className="w-full bg-omop-emerald hover:brightness-110 disabled:opacity-50 text-white font-bold text-xs py-2 rounded-lg flex items-center justify-center gap-1.5 transition-colors pt-2.5"
                           >
                             {actionLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Lock className="w-3.5 h-3.5" />}
                             {authTab === 'login' ? 'Authenticate Credentials' : 'Register Secure Account'}
@@ -720,7 +720,7 @@ export const DataSourceManager: React.FC<DataSourceManagerProps> = ({
                   <div className="space-y-4">
                     <div>
                       <h3 className="text-sm font-bold text-white flex items-center gap-1.5">
-                        <Database className="w-4 h-4 text-green-400" />
+                        <Database className="w-4 h-4 text-omop-emerald" />
                         Dynamic Table Mount Controller
                       </h3>
                       <p className="text-xs text-martian-muted mt-1 leading-relaxed">
@@ -731,9 +731,9 @@ export const DataSourceManager: React.FC<DataSourceManagerProps> = ({
                     <div className="space-y-3.5 pt-2">
                       <div>
                         <label className="block text-xs font-semibold text-martian-muted mb-1.5 uppercase tracking-wider">Supabase Table Name</label>
-                        <input 
-                          type="text" 
-                          className="w-full bg-martian-surface border border-martian-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-green-400 text-white"
+                        <input
+                          type="text"
+                          className="w-full bg-martian-surface border border-martian-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-omop-emerald text-white"
                           placeholder="e.g., user_profiles, user_transactions"
                           value={sdkTableName}
                           onChange={(e) => {
@@ -750,9 +750,9 @@ export const DataSourceManager: React.FC<DataSourceManagerProps> = ({
 
                       <div>
                         <label className="block text-xs font-semibold text-martian-muted mb-1.5 uppercase tracking-wider">Mount Alias in DuckDB</label>
-                        <input 
-                          type="text" 
-                          className="w-full bg-martian-surface border border-martian-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-green-400 text-white"
+                        <input
+                          type="text"
+                          className="w-full bg-martian-surface border border-martian-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-omop-emerald text-white"
                           placeholder="e.g., profiles"
                           value={sdkMountName}
                           onChange={(e) => setSdkMountName(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '_'))}
@@ -761,10 +761,10 @@ export const DataSourceManager: React.FC<DataSourceManagerProps> = ({
                     </div>
                   </div>
 
-                  <button 
+                  <button
                     onClick={handleSdkMount}
                     disabled={actionLoading || !sdkTableName || !sdkMountName}
-                    className="w-full bg-green-600 hover:bg-green-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold py-2.5 rounded-lg flex items-center justify-center gap-2 transition-all mt-6 shadow-[0_4px_12px_rgba(22,163,74,0.15)]"
+                    className="w-full bg-omop-emerald hover:brightness-110 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold py-2.5 rounded-lg flex items-center justify-center gap-2 transition-all mt-6 shadow-[0_4px_12px_rgba(5,223,114,0.15)]"
                   >
                     {actionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
                     Mount Authenticated Table

@@ -77,7 +77,7 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({ value, onChange, readOnl
          </div>
          <div className="flex items-center gap-1">
              {error && (
-                 <div className="flex items-center gap-1 text-red-400 text-[10px] mr-2">
+                 <div className="flex items-center gap-1 text-status-error text-[10px] mr-2">
                      <AlertCircle className="w-3 h-3" />
                      <span>Syntax Error</span>
                  </div>
@@ -119,7 +119,7 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({ value, onChange, readOnl
         />
       </div>
       {error && (
-          <div className="bg-red-900/20 text-red-400 text-[10px] p-2 border-t border-red-900/50 font-mono">
+          <div className="bg-status-error/20 text-status-error text-[10px] p-2 border-t border-status-error/25 font-mono">
               {error}
           </div>
       )}
